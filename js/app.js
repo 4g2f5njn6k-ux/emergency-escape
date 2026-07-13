@@ -32,17 +32,18 @@ function migrateSinaImages() {
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
-  // 迁移旧数据
-  migrateSinaImages();
-
   // 加载动画
   setTimeout(() => {
     document.getElementById('loader').classList.add('hidden');
   }, 1200);
 
-  // 解析 hash 路由
-  const hash = window.location.hash.slice(1) || 'home';
-  navigate(hash);
+  // 等待数据就绪后再渲染（v2：数据从 content.json 异步加载）
+  var hash = window.location.hash.slice(1) || 'home';
+  onDataReady(function(data) {
+    // 迁移旧数据
+    migrateSinaImages();
+    navigate(hash);
+  });
 
   // 监听滚动，显示/隐藏返回顶部按钮
   window.addEventListener('scroll', () => {

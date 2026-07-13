@@ -85,6 +85,17 @@
       background: var(--green-mid); color: white;
       border-color: var(--green-mid);
     }
+    .admin-tab-publish {
+      background: #f97316; color: white;
+      border-color: #f97316; font-weight: 600;
+      margin-left: auto;
+    }
+    .admin-tab-publish:hover {
+      background: #ea580c; border-color: #ea580c;
+    }
+    .admin-tab-publish.publishing {
+      opacity: 0.7; pointer-events: none;
+    }
 
     /* 发布卡片 */
     .post-card {
@@ -342,6 +353,7 @@
     <button class="admin-tab" data-tab="musicctrl" onclick="switchTab('musicctrl')">🎵 音乐控制</button>
     <button class="admin-tab" data-tab="musicshare" onclick="switchTab('musicshare')">🎧 分享音乐</button>
     <button class="admin-tab" data-tab="weiboimport" onclick="switchTab('weiboimport')">📥 导入微博</button>
+    <button class="admin-tab admin-tab-publish" onclick="publishSite()" title="将当前所有内容发布到线上，所有访客都能看到">🚀 发布上线</button>
   </div>
 
   <!-- 发布区域 -->
@@ -530,9 +542,9 @@
   </div>
 </div>
 
+<script src="data/weibo_import.js"></script>
 <script src="js/data.js"></script>
 <script src="data/playlist.js"></script>
-<script src="data/weibo_import.js"></script>
 <script>
   // ===== 工具函数（独立定义，不依赖 app.js） =====
   function escapeHtml(str) {
@@ -1270,6 +1282,42 @@
       showImportStats();
     }
   };
+
+  // ===== 发布上线：调用 Netlify Function 代理 GitHub API =====
+
+  function publishSite() {
+    if (!confirm('将当前所有内容发布到线上？\n发布后所有访客都能看到最新内容。')) return;
+
+    var btn = document.querySelector('.admin-tab-publish');
+    var origText = btn.textContent;
+    btn.textContent = '⏳ 正在发布...';
+    btn.classList.add('publishing');
+
+    var body = {
+      message: '📝 发布内容更新 ' + new Date().toLocaleString('zh-CN'),
+      content: exportContentJSON()
+    };
+
+    fetch('/.netlify/functions/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(result) {
+      if (result.ok) {
+        btn.textContent = '✅ 已发布！约30秒生效';
+        setTimeout(function() { btn.textContent = origText; btn.classList.remove('publishing'); }, 3000);
+      } else {
+        throw new Error(result.error || '发布失败');
+      }
+    })
+    .catch(function(err) {
+      btn.textContent = origText;
+      btn.classList.remove('publishing');
+      alert('发布失败: ' + err.message);
+    });
+  }
 
   // 启动
   initLogin();
