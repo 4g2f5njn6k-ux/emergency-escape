@@ -1,0 +1,30 @@
+# 每次 push 自动部署到 Netlify
+name: Deploy to Netlify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/content.json'
+      - 'index.html'
+      - 'admin.html'
+      - 'js/**'
+      - 'css/**'
+      - 'images/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: 1ee13a59-a2b5-44aa-878a-33e0c7d361f0
+        run: |
+          zip -r site.zip . -x ".git/*" "scripts/*" "test-photo.html" ".github/*"
+          curl -s -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+            -H "Content-Type: application/zip" \
+            --data-binary @site.zip \
+            "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys"
