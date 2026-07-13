@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理面板 · Emergency Escape</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ===== 登录锁屏 ===== */
+    .login-overlay {
+      position: fixed; top:0;left:0;width:100%;height:100%;
+      background: #f6f3ed;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+    }
+    .login-card {
+      text-align: center; max-width: 340px; padding: 2rem;
+    }
+    .login-card h2 {
+      font-family: var(--font-en); color: var(--green-deep);
+      font-size: 1.3rem; font-weight: 400; margin-bottom: 0.3rem;
+    }
+    .login-card .sub {
+      font-size: 0.8rem; color: var(--text-muted); margin-bottom: 2rem;
+    }
+    .login-card input {
+      width: 100%; padding: 0.7rem 1rem;
+      border: 1.5px solid rgba(58,107,76,0.25);
+      border-radius: 8px; font-size: 1rem; text-align: center;
+      font-family: var(--font-cn); outline: none;
+      background: white; color: var(--text);
+      transition: border-color 0.2s;
+    }
+    .login-card input:focus { border-color: var(--green-mid); }
+    .login-card .login-btn {
+      margin-top: 1rem; width: 100%; padding: 0.7rem;
+      background: var(--green-mid); color: white; border: none;
+      border-radius: 8px; cursor: pointer; font-size: 0.95rem;
+      font-family: var(--font-cn); transition: background 0.2s;
+    }
+    .login-card .login-btn:hover { background: var(--green-deep); }
+    .login-error {
+      font-size: 0.8rem; color: #c0392b; margin-top: 0.5rem; display: none;
+    }
+
+    /* ===== 管理面板 ===== */
+    .admin-wrap {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+    .admin-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid var(--green-wash);
+    }
+    .admin-header h1 {
+      font-family: var(--font-en);
+      font-size: 1.4rem;
+      color: var(--green-deep);
+      font-weight: 400;
+    }
+    .header-right { display: flex; align-items: center; gap: 0.8rem; }
+    .btn-ghost {
+      background: none; border: none; color: var(--text-muted);
+      cursor: pointer; font-size: 0.75rem; font-family: var(--font-cn);
+      padding: 0.2rem 0.5rem; border-radius: 4px; transition: 0.2s;
+    }
+    .btn-ghost:hover { color: var(--green-mid); background: var(--green-wash); }
+    .admin-tabs {
+      display: flex; gap: 0.3rem; margin-bottom: 1.5rem; flex-wrap: wrap;
+    }
+    .admin-tab {
+      padding: 0.5rem 1.2rem;
+      border: 1.5px solid rgba(58,107,76,0.2);
+      background: transparent; border-radius: 100px;
+      cursor: pointer; font-size: 0.85rem;
+      font-family: var(--font-cn); color: var(--text-light);
+      transition: var(--transition);
+    }
+    .admin-tab.active {
+      background: var(--green-mid); color: white;
+      border-color: var(--green-mid);
+    }
+
+    /* 发布卡片 */
+    .post-card {
+      background: white;
+      border: 2px dashed rgba(58,107,76,0.2);
+      border-radius: var(--radius); padding: 1.5rem;
+      margin-bottom: 2rem; transition: var(--transition);
+    }
+    .post-card.focused {
+      border-color: var(--green-mid); border-style: solid;
+      box-shadow: 0 0 0 4px rgba(58,107,76,0.06);
+    }
+    .post-label {
+      font-size: 0.8rem; color: var(--text-muted);
+      letter-spacing: 1px; margin-bottom: 0.8rem; text-transform: uppercase;
+    }
+    .post-textarea {
+      width: 100%; border: none; outline: none;
+      font-family: var(--font-cn); font-size: 1rem; line-height: 1.8;
+      resize: vertical; color: var(--text); background: transparent;
+      min-height: 60px;
+    }
+    .post-textarea::placeholder { color: var(--text-muted); }
+    .post-input {
+      width: 100%; border: none; outline: none;
+      font-family: var(--font-cn); font-size: 1.1rem;
+      color: var(--text); background: transparent;
+      padding: 0.3rem 0; font-weight: 600;
+    }
+    .post-input::placeholder { color: var(--text-muted); font-weight: 400; }
+
+    .photo-preview-wrap {
+      display: inline-block; position: relative; margin-top: 0.8rem;
+    }
+    .photo-preview-wrap img {
+      max-width: 240px; max-height: 200px;
+      border-radius: var(--radius-sm); display: block;
+    }
+    .photo-preview-wrap .remove-photo {
+      position: absolute; top: -8px; right: -8px;
+      width: 24px; height: 24px; background: #e74c3c;
+      color: white; border: none; border-radius: 50%;
+      cursor: pointer; font-size: 0.8rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .post-actions {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 1rem; padding-top: 0.8rem;
+      border-top: 1px solid rgba(58,107,76,0.08);
+    }
+    .post-actions-left { display: flex; gap: 0.5rem; align-items: center; }
+    .post-actions-right { display: flex; gap: 0.5rem; align-items: center; }
+    .btn-icon {
+      display: flex; align-items: center; gap: 0.3rem;
+      padding: 0.4rem 0.8rem; background: var(--green-wash);
+      color: var(--green-mid); border: none; border-radius: 100px;
+      cursor: pointer; font-size: 0.8rem; font-family: var(--font-cn);
+      transition: var(--transition);
+    }
+    .btn-icon:hover { background: #d4e8db; }
+
+    .btn-preview {
+      display: inline-block;
+      padding: 0.55rem 1.2rem;
+      background: transparent;
+      color: var(--green-mid);
+      border: 1.5px solid var(--green-mid);
+      border-radius: 100px;
+      cursor: pointer; font-size: 0.85rem;
+      font-family: var(--font-cn); transition: 0.2s;
+    }
+    .btn-preview:hover {
+      background: var(--green-wash);
+    }
+
+    /* ===== 预览弹窗 ===== */
+    .preview-overlay {
+      position: fixed; top:0;left:0;width:100%;height:100%;
+      background: rgba(0,0,0,0.45); z-index: 10000;
+      display: none; align-items: center; justify-content: center;
+    }
+    .preview-overlay.active { display: flex; }
+    .preview-dialog {
+      background: white; border-radius: var(--radius);
+      max-width: 560px; width: 90%; max-height: 80vh;
+      overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+    }
+    .preview-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.9rem 1.3rem;
+      border-bottom: 1px solid rgba(58,107,76,0.08);
+      position: sticky; top: 0; background: white; z-index: 1;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .preview-header span {
+      font-size: 0.8rem; color: var(--text-muted);
+      letter-spacing: 1px;
+    }
+    .preview-close {
+      background: none; border: none; font-size: 1.3rem;
+      color: var(--text-muted); cursor: pointer; padding: 0.2rem 0.5rem;
+      border-radius: 4px; transition: 0.2s;
+    }
+    .preview-close:hover { background: #f0f0f0; }
+    .preview-body { padding: 1.5rem; }
+    .preview-body .essay-item {
+      background: var(--green-pale); padding: 1rem 1.2rem;
+      border-radius: var(--radius-sm); border-left: 3px solid var(--green-soft);
+    }
+    .preview-body .essay-text {
+      font-size: 0.95rem; color: var(--text); line-height: 1.7;
+      white-space: pre-wrap;
+    }
+    .preview-body .essay-photo {
+      max-width: 100%; border-radius: var(--radius-sm); margin-top: 0.8rem; display: block;
+    }
+    .preview-body .essay-date {
+      font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;
+    }
+    .preview-body .article-preview h2 {
+      font-size: 1.2rem; color: var(--text); margin-bottom: 0.5rem;
+    }
+    .preview-body .article-preview .meta {
+      font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;
+    }
+    .preview-body .article-preview .body {
+      font-size: 0.95rem; color: var(--text); line-height: 1.9;
+      white-space: pre-wrap;
+    }
+    .preview-body .photo-preview-img {
+      max-width: 100%; border-radius: var(--radius-sm); display: block;
+    }
+    .preview-body .photo-preview-caption {
+      text-align: center; font-size: 0.8rem; color: var(--text-muted);
+      margin-top: 0.5rem;
+    }
+    .preview-body .guide-preview h2 {
+      font-size: 1.2rem; color: var(--text); margin-bottom: 0.5rem;
+    }
+    .preview-body .guide-preview .body {
+      font-size: 0.95rem; color: var(--text); line-height: 1.9;
+      white-space: pre-wrap;
+    }
+    .preview-footer {
+      padding: 0.9rem 1.3rem; border-top: 1px solid rgba(58,107,76,0.08);
+      text-align: right;
+    }
+
+    /* ===== 内容管理列表 ===== */
+    .tab-manage {
+      background: white; border-radius: var(--radius);
+      border: 1px solid rgba(58,107,76,0.08); overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .tab-manage-header {
+      padding: 0.8rem 1.2rem; font-size: 0.85rem;
+      color: var(--green-mid); border-bottom: 1px solid rgba(58,107,76,0.08);
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--green-wash);
+    }
+    .tab-manage-count {
+      font-size: 0.75rem; color: var(--text-muted);
+      background: white; padding: 0.1rem 0.6rem; border-radius: 100px;
+    }
+    .manage-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.6rem 1.2rem; gap: 0.8rem;
+      border-bottom: 1px solid rgba(58,107,76,0.04);
+      transition: background 0.2s;
+    }
+    .manage-item:last-child { border-bottom: none; }
+    .manage-item:hover { background: #faf9f7; }
+    .manage-text {
+      flex:1; min-width:0; font-size: 0.85rem; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .manage-date {
+      font-size: 0.7rem; color: var(--text-muted); flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .manage-delete {
+      flex-shrink: 0;
+      padding: 0.35rem 0.7rem;
+      background: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-family: var(--font-cn);
+      transition: 0.2s;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+    .manage-delete:hover {
+      background: #c0392b;
+    }
+    .manage-empty {
+      padding: 2rem; text-align: center; color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .char-count { font-size: 0.75rem; color: var(--text-muted); }
+    .admin-link {
+      display: block; text-align: center; margin-top: 1.5rem;
+      color: var(--text-muted); font-size: 0.8rem;
+    }
+    .admin-link a { color: var(--green-mid); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<!-- ===== 登录锁屏 ===== -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+    <h2>Emergency Escape</h2>
+    <div class="sub" id="loginSub">请输入管理密码</div>
+    <input type="password" id="loginPwd" placeholder="输入密码" maxlength="30" onkeydown="if(event.key==='Enter')tryLogin()">
+    <button class="login-btn" onclick="tryLogin()" id="loginBtnText">进入</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ===== 预览弹窗 ===== -->
+<div class="preview-overlay" id="previewOverlay" onclick="if(event.target===this)closePreview()">
+  <div class="preview-dialog">
+    <div class="preview-header">
+      <span>预览效果</span>
+      <button class="preview-close" onclick="closePreview()">×</button>
+    </div>
+    <div class="preview-body" id="previewBody"></div>
+    <div class="preview-footer">
+      <button class="btn" onclick="closePreview()">关闭预览</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 管理面板主体 ===== -->
+<div class="admin-wrap" id="adminMain" style="display:none;">
+  <div class="admin-header">
+    <h1>Emergency Escape</h1>
+    <div class="header-right">
+      <button class="btn-ghost" onclick="changePwd()">改密码</button>
+      <button class="btn-ghost" onclick="logout()">退出</button>
+    </div>
+  </div>
+
+  <!-- 发布标签切换 -->
+  <div class="admin-tabs">
+    <button class="admin-tab active" data-tab="essay" onclick="switchTab('essay')">💭 发随笔</button>
+    <button class="admin-tab" data-tab="article" onclick="switchTab('article')">📖 写文章</button>
+    <button class="admin-tab" data-tab="photo" onclick="switchTab('photo')">📷 传照片</button>
+    <button class="admin-tab" data-tab="guide" onclick="switchTab('guide')">🗺️ 记攻略</button>
+    <button class="admin-tab" data-tab="musicctrl" onclick="switchTab('musicctrl')">🎵 音乐控制</button>
+    <button class="admin-tab" data-tab="musicshare" onclick="switchTab('musicshare')">🎧 分享音乐</button>
+    <button class="admin-tab" data-tab="weiboimport" onclick="switchTab('weiboimport')">📥 导入微博</button>
+  </div>
+
+  <!-- 发布区域 -->
+  <div class="post-card" id="postCard">
+    <!-- 随笔 -->
+    <div id="tab-essay">
+      <div class="post-label">此刻想说什么？</div>
+      <textarea class="post-textarea" id="essayText" placeholder="写点什么...支持换行，但会当作一条碎片发布" rows="3" maxlength="500" oninput="updateEssayCount()" onfocus="focusCard()" onblur="blurCard()"></textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.3rem;">
+        <span class="char-count" id="essayCount">0 / 500</span>
+        <span style="font-size:0.75rem;color:var(--text-muted);">短句碎片，像便签一样</span>
+      </div>
+      <div id="essayPhotoPreview" style="margin-top:0.5rem;"></div>
+      <div class="post-actions">
+        <div class="post-actions-left">
+          <label class="btn-icon">
+            🖼️ 加图片
+            <input type="file" accept="image/*" style="display:none" onchange="previewPhoto(this, 'essayPhotoPreview', 'essayPhotoData')" id="essayPhotoInput">
+          </label>
+        </div>
+        <div class="post-actions-right">
+          <button class="btn-preview" onclick="previewEssay()">👁 预览</button>
+          <button class="btn" onclick="publishEssay()">发布碎片</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 文章 -->
+    <div id="tab-article" style="display:none;">
+      <div class="post-label">文章标题</div>
+      <input class="post-input" id="articleTitle" placeholder="取个标题吧" maxlength="100" onfocus="focusCard()" onblur="blurCard()">
+      <div style="height:1rem;"></div>
+      <div class="post-label">正文内容</div>
+      <textarea class="post-textarea" id="articleBody" placeholder="写你想写的，长短都行..." rows="10" onfocus="focusCard()" onblur="blurCard()" oninput="updateArticleCount()"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:0.3rem;">
+        <span class="char-count" id="articleCount">0 字</span>
+      </div>
+      <div class="post-actions" style="justify-content:flex-end;">
+        <div class="post-actions-right">
+          <button class="btn-preview" onclick="previewArticle()">👁 预览</button>
+          <button class="btn" onclick="publishArticle()">发布文章</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 照片 -->
+    <div id="tab-photo" style="display:none;">
+      <div class="post-label">上传照片</div>
+      <div style="text-align:center;padding:2rem 0;">
+        <label style="cursor:pointer;display:inline-block;">
+          <div style="width:120px;height:120px;border:2px dashed rgba(58,107,76,0.2);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:2rem;color:var(--text-muted);transition:var(--transition);">
+            ＋
+          </div>
+          <input type="file" accept="image/*" style="display:none" onchange="previewPhoto(this, 'photoPreview', 'photoData')" id="photoInput">
+        </label>
+      </div>
+      <div id="photoPreview" style="text-align:center;"></div>
+      <div style="margin-top:1rem;">
+        <input class="post-input" id="photoCaption" placeholder="照片说明（可选）" maxlength="100" onfocus="focusCard()" onblur="blurCard()">
+      </div>
+      <div class="post-actions" style="justify-content:flex-end;">
+        <div class="post-actions-right">
+          <button class="btn-preview" onclick="previewPhotoPub()">👁 预览</button>
+          <button class="btn" onclick="publishPhoto()">添加到相册</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 攻略 -->
+    <div id="tab-guide" style="display:none;">
+      <div class="post-label">攻略标题</div>
+      <input class="post-input" id="guideTitle" placeholder="比如：杭州两日徒步路线" maxlength="100" onfocus="focusCard()" onblur="blurCard()">
+      <div style="height:1rem;"></div>
+      <div class="post-label">内容（路线、贴士、推荐...按行写）</div>
+      <textarea class="post-textarea" id="guideBody" placeholder="Day 1：...&#10;Day 2：...&#10;&#10;Tips：&#10;- 带够水&#10;- 早点出发" rows="10" onfocus="focusCard()" onblur="blurCard()" oninput="updateGuideCount()"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:0.3rem;">
+        <span class="char-count" id="guideCount">0 字</span>
+      </div>
+      <div class="post-actions" style="justify-content:flex-end;">
+        <div class="post-actions-right">
+          <button class="btn-preview" onclick="previewGuide()">👁 预览</button>
+          <button class="btn" onclick="publishGuide()">发布攻略</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 音乐控制 -->
+    <div id="tab-musicctrl" style="display:none;">
+      <div class="post-label">🔊 今日主打 · 置顶歌曲</div>
+      <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:1rem;">
+        访客点开网站时，会先循环播放这首歌曲。过期后自动恢复随机播放。
+      </p>
+      <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+        <input id="musicSearchInput" class="post-input" placeholder="搜索歌单中的歌曲..." style="flex:1;padding:0.4rem 0.8rem;font-size:0.9rem;font-weight:400;">
+        <button class="btn-icon" onclick="searchPlaylist()" style="flex-shrink:0;">搜索</button>
+      </div>
+      <div id="musicSearchResults" style="max-height:240px;overflow-y:auto;margin-bottom:1rem;"></div>
+
+      <div id="currentPinned" style="margin-bottom:1rem;"></div>
+
+      <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+        <select id="pinnedDuration" class="post-input" style="width:auto;padding:0.4rem 0.8rem;font-size:0.9rem;font-weight:400;">
+          <option value="1">循环 1 天</option>
+          <option value="3" selected>循环 3 天</option>
+          <option value="7">循环 7 天</option>
+          <option value="14">循环 14 天</option>
+          <option value="0">取消置顶</option>
+        </select>
+        <button id="pinSongBtn" class="btn" disabled onclick="pinCurrentSong()">设为今日主打</button>
+      </div>
+      <div id="pinnedStatus" style="font-size:0.8rem;color:var(--green-mid);margin-top:0.5rem;"></div>
+    </div>
+
+    <!-- 分享音乐 -->
+    <div id="tab-musicshare" style="display:none;">
+      <div class="post-label">分享一首歌</div>
+      <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.8rem;">
+        粘贴网易云链接自动解析，QQ音乐/Apple Music 请手动填写
+      </p>
+      <input id="shareLink" class="post-input" placeholder="粘贴音乐链接（网易云自动解析）" style="font-size:0.9rem;font-weight:400;" onblur="autoFetchMusic()">
+      <button class="btn-icon" onclick="autoFetchMusic()" style="margin-top:0.4rem;">🔍 自动解析</button>
+      <div id="shareFetchStatus" style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;"></div>
+
+      <div style="height:0.8rem;"></div>
+      <div style="display:flex;gap:0.5rem;">
+        <input id="shareName" class="post-input" placeholder="歌曲名" style="flex:1;font-size:0.9rem;font-weight:400;">
+        <input id="shareArtist" class="post-input" placeholder="歌手" style="flex:1;font-size:0.9rem;font-weight:400;">
+      </div>
+      <div style="height:0.5rem;"></div>
+      <input id="shareCover" class="post-input" placeholder="封面图片链接（可选）" style="font-size:0.9rem;font-weight:400;">
+      <div style="height:0.5rem;"></div>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <select id="sharePlatform" class="post-input" style="width:auto;font-size:0.9rem;font-weight:400;">
+          <option value="netease">网易云音乐</option>
+          <option value="qq">QQ音乐</option>
+          <option value="apple">Apple Music</option>
+          <option value="other">其他平台</option>
+        </select>
+      </div>
+      <div style="height:0.5rem;"></div>
+      <textarea id="shareNote" class="post-textarea" placeholder="想说的话（可选）..." rows="2" style="min-height:40px;"></textarea>
+      <div id="shareCoverPreview" style="margin-top:0.5rem;"></div>
+      <div class="post-actions" style="justify-content:flex-end;">
+        <div class="post-actions-right">
+          <button class="btn-preview" onclick="previewMusicShare()">👁 预览</button>
+          <button class="btn" onclick="publishMusicShare()">发布分享</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 内容管理列表 -->
+  <div id="tabManage" class="tab-manage"></div>
+
+  <!-- 导入微博 -->
+  <div class="post-card" id="tab-weiboimport" style="display:none;">
+    <div class="post-card-header">
+      <span class="post-card-icon">📥</span>
+      <span class="post-card-title">从微博导入内容</span>
+    </div>
+    <div style="padding: 0.8rem 0;">
+      <div class="import-info" id="importInfo" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6;">
+        <p>已抓取 <strong id="importTotal">-</strong> 条微博内容，按以下分类导入：</p>
+        <ul style="margin:0.5rem 0 0 1.2rem;padding:0;">
+          <li>💭 随笔：<span id="importEssayCount">-</span> 条</li>
+          <li>📖 文章：<span id="importArticleCount">-</span> 条</li>
+          <li>📷 照片：<span id="importPhotoCount">-</span> 张</li>
+        </ul>
+        <p style="margin-top:1rem;font-size:0.75rem;color:var(--text-muted);">导入会跳过已有重复内容，不会覆盖你手动发布的内容。</p>
+      </div>
+      <div id="importProgress" style="display:none;margin-bottom:1rem;">
+        <div style="font-size:0.8rem;color:var(--green-mid);margin-bottom:0.3rem;" id="importStatus">正在导入...</div>
+        <div style="height:6px;background:var(--green-wash);border-radius:3px;overflow:hidden;">
+          <div id="importBar" style="height:100%;background:var(--green-mid);width:0%;transition:width 0.2s;border-radius:3px;"></div>
+        </div>
+      </div>
+      <button class="btn" id="importBtn" onclick="startWeiboImport()" style="width:100%;padding:0.8rem;font-size:1rem;">
+        🚀 开始导入到网站
+      </button>
+      <p id="importResult" style="font-size:0.8rem;color:var(--green-mid);margin-top:0.8rem;display:none;"></p>
+    </div>
+  </div>
+
+  <div class="admin-link">
+    <a href="index.html" target="_blank">→ 打开网站前台</a>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="data/playlist.js"></script>
+<script src="data/weibo_import.js"></script>
+<script>
+  // ===== 工具函数（独立定义，不依赖 app.js） =====
+  function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // 迁移：把 localStorage 中的新浪图床 URL 替换为本地路径
+  function migrateSinaImages() {
+    var data = loadData();
+    if (!data) return;
+    var changed = false;
+    var fix = function(url) {
+      if (url && url.indexOf('sinaimg.cn') !== -1) {
+        var filename = url.split('/').pop();
+        changed = true;
+        return 'images/photos/' + filename;
+      }
+      return url;
+    };
+    if (data.photos) data.photos.forEach(function(p) { if (p.src) p.src = fix(p.src); });
+    if (data.essays) data.essays.forEach(function(e) { if (e.photo) e.photo = fix(e.photo); });
+    if (changed) saveData(data);
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = now - d;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (minutes < 1) return '刚刚';
+    if (minutes < 60) return minutes + ' 分钟前';
+    if (hours < 24) return hours + ' 小时前';
+    if (days < 7) return days + ' 天前';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}.${m}.${dd}`;
+  }
+
+  function fullDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${y}.${m}.${dd} ${h}:${mi}`;
+  }
+
+  // ===== 密码管理 =====
+  const PWD_KEY = 'ee_admin_pwd_hash';
+  const SESSION_KEY = 'ee_admin_authed';
+
+  function simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0;
+    }
+    return 'ee_' + Math.abs(hash).toString(36) + '_' + str.length;
+  }
+
+  function getStoredHash() { return localStorage.getItem(PWD_KEY); }
+  function isPasswordSet() { return !!getStoredHash(); }
+  function isAuthed() { return sessionStorage.getItem(SESSION_KEY) === '1'; }
+
+  function initLogin() {
+    const overlay = document.getElementById('loginOverlay');
+    const main = document.getElementById('adminMain');
+    const sub = document.getElementById('loginSub');
+    const btn = document.getElementById('loginBtnText');
+    const pwdInput = document.getElementById('loginPwd');
+
+    if (isAuthed()) {
+      overlay.style.display = 'none';
+      main.style.display = 'block';
+      initAdmin();
+      return;
+    }
+
+    if (!isPasswordSet()) {
+      sub.textContent = '首次使用，请设置管理密码';
+      btn.textContent = '设置密码';
+    } else {
+      sub.textContent = '请输入管理密码';
+      btn.textContent = '进入';
+    }
+
+    overlay.style.display = 'flex';
+    main.style.display = 'none';
+    pwdInput.focus();
+  }
+
+  function tryLogin() {
+    const pwd = document.getElementById('loginPwd').value.trim();
+    const err = document.getElementById('loginError');
+    if (!pwd) { err.textContent = '请输入密码'; err.style.display = 'block'; return; }
+
+    if (!isPasswordSet()) {
+      if (pwd.length < 3) { err.textContent = '密码至少3位'; err.style.display = 'block'; return; }
+      localStorage.setItem(PWD_KEY, simpleHash(pwd));
+      sessionStorage.setItem(SESSION_KEY, '1');
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('adminMain').style.display = 'block';
+      initAdmin();
+    } else {
+      if (simpleHash(pwd) === getStoredHash()) {
+        sessionStorage.setItem(SESSION_KEY, '1');
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('adminMain').style.display = 'block';
+        initAdmin();
+      } else {
+        err.textContent = '密码不对，再试试';
+        err.style.display = 'block';
+        document.getElementById('loginPwd').value = '';
+      }
+    }
+  }
+
+  function logout() {
+    if (!confirm('确定退出管理面板吗？')) return;
+    sessionStorage.removeItem(SESSION_KEY);
+    location.reload();
+  }
+
+  function changePwd() {
+    const oldPwd = prompt('请输入当前密码：');
+    if (!oldPwd) return;
+    if (simpleHash(oldPwd) !== getStoredHash()) { alert('当前密码不对'); return; }
+    const newPwd = prompt('请输入新密码（至少3位）：');
+    if (!newPwd || newPwd.length < 3) { alert('密码至少3位'); return; }
+    const repeat = prompt('请再次输入新密码：');
+    if (newPwd !== repeat) { alert('两次密码不一致'); return; }
+    localStorage.setItem(PWD_KEY, simpleHash(newPwd));
+    sessionStorage.setItem(SESSION_KEY, '1');
+    alert('密码修改成功！');
+  }
+
+  // ===== 管理面板 =====
+  let currentTab = 'essay';
+  let essayPhotoData = null;
+  let photoData = null;
+
+  const tabTypeMap = {
+    essay:      { key: 'essays',      label: '随笔碎片', icon: '💭' },
+    article:    { key: 'articles',    label: '文章',     icon: '📖' },
+    photo:      { key: 'photos',      label: '照片',     icon: '📷' },
+    guide:      { key: 'guides',      label: '攻略',     icon: '🗺️' },
+    musicshare: { key: 'musicshares', label: '音乐分享', icon: '🎧' },
+  };
+
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.admin-tab').forEach(function(t) { t.classList.remove('active'); });
+    var target = document.querySelector('.admin-tab[data-tab="' + tab + '"]');
+    if (target) target.classList.add('active');
+    var allTabs = ['essay','article','photo','guide','musicctrl','musicshare','weiboimport'];
+    allTabs.forEach(function(t) {
+      var el = document.getElementById('tab-' + t);
+      if (el) el.style.display = t === tab ? 'block' : 'none';
+    });
+    refreshTabManage();
+  }
+
+  function focusCard() { document.getElementById('postCard').classList.add('focused'); }
+  function blurCard()  { document.getElementById('postCard').classList.remove('focused'); }
+
+  function updateEssayCount() {
+    document.getElementById('essayCount').textContent = document.getElementById('essayText').value.length + ' / 500';
+  }
+  function updateArticleCount() {
+    document.getElementById('articleCount').textContent = document.getElementById('articleBody').value.length + ' 字';
+  }
+  function updateGuideCount() {
+    document.getElementById('guideCount').textContent = document.getElementById('guideBody').value.length + ' 字';
+  }
+
+  function previewPhoto(input, previewId, storageKey) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert('图片太大了，请选5MB以下的照片'); return; }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      if (storageKey === 'essayPhotoData') essayPhotoData = e.target.result;
+      if (storageKey === 'photoData') photoData = e.target.result;
+      document.getElementById(previewId).innerHTML = `<div class="photo-preview-wrap">
+        <img src="${e.target.result}" alt="预览">
+        <button class="remove-photo" onclick="removePhoto('${previewId}', '${storageKey}')">×</button>
+      </div>`;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removePhoto(previewId, storageKey) {
+    document.getElementById(previewId).innerHTML = '';
+    if (storageKey === 'essayPhotoData') { essayPhotoData = null; document.getElementById('essayPhotoInput').value = ''; }
+    if (storageKey === 'photoData') { photoData = null; document.getElementById('photoInput').value = ''; }
+  }
+
+  // ===== 预览 =====
+  function openPreview(html) {
+    document.getElementById('previewBody').innerHTML = html;
+    document.getElementById('previewOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closePreview() {
+    document.getElementById('previewOverlay').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  function previewEssay() {
+    const text = document.getElementById('essayText').value.trim();
+    if (!text) { alert('先写点内容再预览吧'); return; }
+    let html = '<div class="essay-item">';
+    html += '<div class="essay-text">' + escapeHtml(text) + '</div>';
+    if (essayPhotoData) {
+      html += '<img class="essay-photo" src="' + essayPhotoData + '" alt="">';
+    }
+    html += '<div class="essay-date">' + fullDate(new Date().toISOString()) + '</div>';
+    html += '</div>';
+    openPreview(html);
+  }
+
+  function previewArticle() {
+    const title = document.getElementById('articleTitle').value.trim();
+    const body = document.getElementById('articleBody').value.trim();
+    if (!title && !body) { alert('先写点内容再预览吧'); return; }
+    let html = '<div class="article-preview">';
+    html += '<h2>' + escapeHtml(title || '(无标题)') + '</h2>';
+    html += '<div class="meta">' + fullDate(new Date().toISOString()) + '</div>';
+    html += '<div class="body">' + escapeHtml(body || '') + '</div>';
+    html += '</div>';
+    openPreview(html);
+  }
+
+  function previewPhotoPub() {
+    if (!photoData) { alert('请先选择照片'); return; }
+    const caption = document.getElementById('photoCaption').value.trim();
+    let html = '<div style="text-align:center;">';
+    html += '<img class="photo-preview-img" src="' + photoData + '" alt="">';
+    if (caption) html += '<p class="photo-preview-caption">' + escapeHtml(caption) + '</p>';
+    html += '</div>';
+    openPreview(html);
+  }
+
+  function previewGuide() {
+    const title = document.getElementById('guideTitle').value.trim();
+    const body = document.getElementById('guideBody').value.trim();
+    if (!title && !body) { alert('先写点内容再预览吧'); return; }
+    let html = '<div class="guide-preview">';
+    html += '<h2>' + escapeHtml(title || '(无标题)') + '</h2>';
+    html += '<div class="meta" style="font-size:0.75rem;color:var(--text-muted);margin-bottom:1rem;">' + fullDate(new Date().toISOString()) + '</div>';
+    html += '<div class="body">' + escapeHtml(body || '') + '</div>';
+    html += '</div>';
+    openPreview(html);
+  }
+
+  // ===== 发布 =====
+  function publishEssay() {
+    const text = document.getElementById('essayText').value.trim();
+    if (!text) { alert('写点东西再发吧'); return; }
+    const data = loadData();
+    data.essays.unshift({
+      id: genId('e'), text: text, date: new Date().toISOString(),
+      photo: essayPhotoData || ''
+    });
+    saveData(data);
+    document.getElementById('essayText').value = '';
+    essayPhotoData = null;
+    document.getElementById('essayPhotoInput').value = '';
+    document.getElementById('essayPhotoPreview').innerHTML = '';
+    document.getElementById('essayCount').textContent = '0 / 500';
+    refreshTabManage();
+  }
+
+  function publishArticle() {
+    const title = document.getElementById('articleTitle').value.trim();
+    const body = document.getElementById('articleBody').value.trim();
+    if (!title) { alert('请填写标题'); return; }
+    if (!body) { alert('请填写正文内容'); return; }
+    const data = loadData();
+    data.articles.unshift({
+      id: genId('a'), title: title, body: body, date: new Date().toISOString()
+    });
+    saveData(data);
+    document.getElementById('articleTitle').value = '';
+    document.getElementById('articleBody').value = '';
+    refreshTabManage();
+  }
+
+  function publishPhoto() {
+    if (!photoData) { alert('请先选择照片'); return; }
+    const caption = document.getElementById('photoCaption').value.trim();
+    const data = loadData();
+    data.photos.unshift({
+      id: genId('p'), src: photoData, caption: caption, date: new Date().toISOString()
+    });
+    saveData(data);
+    photoData = null;
+    document.getElementById('photoInput').value = '';
+    document.getElementById('photoPreview').innerHTML = '';
+    document.getElementById('photoCaption').value = '';
+    refreshTabManage();
+  }
+
+  function publishGuide() {
+    const title = document.getElementById('guideTitle').value.trim();
+    const body = document.getElementById('guideBody').value.trim();
+    if (!title) { alert('请填写标题'); return; }
+    if (!body) { alert('请填写内容'); return; }
+    const data = loadData();
+    data.guides.unshift({
+      id: genId('g'), title: title, body: body, date: new Date().toISOString()
+    });
+    saveData(data);
+    document.getElementById('guideTitle').value = '';
+    document.getElementById('guideBody').value = '';
+    refreshTabManage();
+  }
+
+  // ===== 删除（事件委托，不用内联 onclick） =====
+  function handleManageClick(e) {
+    var btn = e.target.closest('.manage-delete');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var typeKey = btn.getAttribute('data-type');
+    var id = btn.getAttribute('data-id');
+    if (!confirm('确定删除这条内容吗？此操作不可恢复。')) return;
+    deleteItem(typeKey, id);
+    refreshTabManage();
+  }
+
+  // ===== 刷新管理列表 =====
+  function refreshTabManage() {
+    // 音乐控制标签不需要管理列表
+    if (currentTab === 'musicctrl') {
+      document.getElementById('tabManage').innerHTML = '';
+      return;
+    }
+    const data = loadData();
+    const info = tabTypeMap[currentTab];
+    if (!info) { document.getElementById('tabManage').innerHTML = ''; return; }
+    const items = data[info.key] || [];
+    const container = document.getElementById('tabManage');
+
+    var html = '<div class="tab-manage-header">';
+    html += '<span>' + info.icon + ' 已发布的' + info.label + '</span>';
+    html += '<span class="tab-manage-count">' + items.length + ' 条</span>';
+    html += '</div>';
+
+    if (items.length === 0) {
+      html += '<div class="manage-empty">还没有内容，发一条吧</div>';
+    } else {
+      items.forEach(function(item) {
+        var text = '';
+        if (currentTab === 'essay')      text = item.text;
+        if (currentTab === 'article')    text = item.title;
+        if (currentTab === 'photo')      text = item.caption || '(无说明)';
+        if (currentTab === 'guide')      text = item.title;
+        if (currentTab === 'musicshare') text = item.name + ' - ' + item.artist;
+
+        html += '<div class="manage-item">';
+        html += '<span class="manage-text" title="' + escapeHtml(text) + '">' + escapeHtml(text) + '</span>';
+        html += '<span class="manage-date">' + formatDate(item.date) + '</span>';
+        html += '<button class="manage-delete" data-type="' + info.key + '" data-id="' + item.id + '">删除</button>';
+        html += '</div>';
+      });
+    }
+
+    container.innerHTML = html;
+  }
+
+  function initAdmin() {
+    // 迁移旧数据中的新浪图片 URL
+    migrateSinaImages();
+    // 确保事件监听只绑定一次
+    var mgr = document.getElementById('tabManage');
+    if (!mgr._bound) {
+      mgr.addEventListener('click', handleManageClick);
+      mgr._bound = true;
+    }
+    refreshTabManage();
+    updateEssayCount();
+  }
+
+  // ========== 音乐控制 ==========
+  var selectedPinnedSong = null; // { id, name, artist, pic }
+
+  function searchPlaylist() {
+    var q = document.getElementById('musicSearchInput').value.trim().toLowerCase();
+    var container = document.getElementById('musicSearchResults');
+    if (!q || q.length < 1) {
+      container.innerHTML = '<p style="font-size:0.8rem;color:var(--text-muted);">输入歌名或歌手搜索...</p>';
+      return;
+    }
+    if (typeof MUSIC_PLAYLIST === 'undefined') {
+      container.innerHTML = '<p style="font-size:0.8rem;color:#c0392b;">歌单数据未加载</p>';
+      return;
+    }
+    var results = [];
+    for (var i = 0; i < MUSIC_PLAYLIST.length; i++) {
+      var s = MUSIC_PLAYLIST[i];
+      if (s.name.toLowerCase().indexOf(q) >= 0 || s.artist.toLowerCase().indexOf(q) >= 0) {
+        results.push(s);
+        if (results.length >= 30) break;
+      }
+    }
+    if (results.length === 0) {
+      container.innerHTML = '<p style="font-size:0.8rem;color:var(--text-muted);">没找到，换个关键词试试</p>';
+      return;
+    }
+    var html = '';
+    for (var j = 0; j < results.length; j++) {
+      var r = results[j];
+      html += '<div class="manage-item" style="cursor:pointer;" onclick="selectSong(\'' + r.id + '\',\'' + escapeHtml(r.name).replace(/'/g, "\\'") + '\',\'' + escapeHtml(r.artist).replace(/'/g, "\\'") + '\',\'' + (r.pic || '').replace(/'/g, "\\'") + '\')">';
+      html += '<span class="manage-text">' + escapeHtml(r.name) + ' — ' + escapeHtml(r.artist) + '</span>';
+      html += '<span style="font-size:0.75rem;color:var(--green-mid);">选这首</span>';
+      html += '</div>';
+    }
+    container.innerHTML = html;
+  }
+
+  function selectSong(id, name, artist, pic) {
+    selectedPinnedSong = { id: id, name: name, artist: artist, pic: pic };
+    document.getElementById('pinSongBtn').disabled = false;
+    document.getElementById('pinSongBtn').textContent = '设为今日主打：' + name;
+    document.getElementById('musicSearchResults').innerHTML = '<p style="font-size:0.8rem;color:var(--green-mid);">✅ 已选择：<strong>' + escapeHtml(name) + '</strong> — ' + escapeHtml(artist) + '</p>';
+  }
+
+  function pinCurrentSong() {
+    if (!selectedPinnedSong) return;
+    var days = parseInt(document.getElementById('pinnedDuration').value);
+    if (days === 0) {
+      // 取消置顶
+      localStorage.removeItem('ee_pinned_song');
+      selectedPinnedSong = null;
+      document.getElementById('pinSongBtn').disabled = true;
+      document.getElementById('pinSongBtn').textContent = '设为今日主打';
+      document.getElementById('musicSearchResults').innerHTML = '';
+      document.getElementById('pinnedStatus').textContent = '已取消置顶，恢复随机播放';
+      loadPinnedState();
+      return;
+    }
+    var until = new Date(Date.now() + days * 86400000).toISOString();
+    var pinned = {
+      id: selectedPinnedSong.id,
+      name: selectedPinnedSong.name,
+      artist: selectedPinnedSong.artist,
+      pic: selectedPinnedSong.pic || '',
+      until: until
+    };
+    localStorage.setItem('ee_pinned_song', JSON.stringify(pinned));
+    document.getElementById('pinnedStatus').textContent = '✅ 已设为今日主打！将循环播放至 ' + fullDate(until);
+    loadPinnedState();
+  }
+
+  function loadPinnedState() {
+    var container = document.getElementById('currentPinned');
+    try {
+      var raw = localStorage.getItem('ee_pinned_song');
+      if (!raw) { container.innerHTML = '<p style="font-size:0.8rem;color:var(--text-muted);">当前未设置置顶歌曲</p>'; return; }
+      var p = JSON.parse(raw);
+      if (!p.id || !p.until) { container.innerHTML = ''; return; }
+      if (Date.now() > new Date(p.until).getTime()) {
+        localStorage.removeItem('ee_pinned_song');
+        container.innerHTML = '<p style="font-size:0.8rem;color:var(--text-muted);">之前的置顶已过期</p>';
+        return;
+      }
+      container.innerHTML = '<div style="background:var(--green-wash);padding:0.8rem;border-radius:8px;">' +
+        '<span style="font-size:0.8rem;color:var(--green-mid);">📌 当前置顶：</span>' +
+        '<strong style="font-size:0.9rem;">' + escapeHtml(p.name) + '</strong>' +
+        '<span style="font-size:0.8rem;color:var(--text-muted);"> — ' + escapeHtml(p.artist) + '</span>' +
+        '<br><span style="font-size:0.75rem;color:var(--text-muted);">有效期至 ' + fullDate(p.until) + '</span>' +
+        '</div>';
+    } catch (e) {
+      container.innerHTML = '';
+    }
+  }
+
+  // 切到音乐控制标签时刷新状态
+  var origSwitchTab = switchTab;
+  switchTab = function(tab) {
+    origSwitchTab(tab);
+    if (tab === 'musicctrl') {
+      loadPinnedState();
+      selectedPinnedSong = null;
+      document.getElementById('pinSongBtn').disabled = true;
+      document.getElementById('pinSongBtn').textContent = '设为今日主打';
+    }
+  };
+
+  // ========== 分享音乐 ==========
+
+  function autoFetchMusic() {
+    var link = document.getElementById('shareLink').value.trim();
+    var status = document.getElementById('shareFetchStatus');
+    if (!link) { status.textContent = ''; return; }
+
+    // 尝试解析网易云歌曲链接
+    var match = link.match(/music\.163\.com.*[?&]id=(\d+)/) || link.match(/163cn\.tv\/\w+/);
+    if (!match) {
+      status.textContent = '无法自动解析，请手动填写（支持网易云链接）';
+      return;
+    }
+
+    status.textContent = '正在解析...';
+
+    // 如果是短链接，需要展开；简单起见只处理直接链接
+    var songId = null;
+    var idMatch = link.match(/id=(\d+)/);
+    if (idMatch) songId = idMatch[1];
+
+    if (!songId) {
+      status.textContent = '无法提取歌曲ID，请手动填写';
+      return;
+    }
+
+    fetch('https://api.injahow.cn/meting/?server=netease&type=song&id=' + songId)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data && data.length > 0) {
+          var song = data[0];
+          document.getElementById('shareName').value = song.name || '';
+          document.getElementById('shareArtist').value = song.artist || '';
+          if (song.pic) {
+            document.getElementById('shareCover').value = song.pic;
+            document.getElementById('shareCoverPreview').innerHTML = '<img src="' + song.pic + '" style="max-width:120px;border-radius:8px;display:block;">';
+          }
+          document.getElementById('sharePlatform').value = 'netease';
+          document.getElementById('shareLink').value = link; // 保留原链接
+          status.textContent = '✅ 解析成功！';
+        } else {
+          status.textContent = '解析失败，请手动填写';
+        }
+      })
+      .catch(function() {
+        status.textContent = '解析失败，请手动填写';
+      });
+  }
+
+  function previewMusicShare() {
+    var name = document.getElementById('shareName').value.trim();
+    var artist = document.getElementById('shareArtist').value.trim();
+    if (!name) { alert('请填写歌曲名'); return; }
+    var cover = document.getElementById('shareCover').value.trim();
+    var platform = document.getElementById('sharePlatform').value;
+    var note = document.getElementById('shareNote').value.trim();
+    var platformLabel = { netease: '网易云', qq: 'QQ音乐', apple: 'Apple Music', other: '其他' };
+
+    var html = '<div class="music-share-card" style="max-width:100%;">';
+    html += '<div class="music-share-cover">';
+    if (cover) {
+      html += '<img src="' + escapeHtml(cover) + '" alt="" style="width:80px;height:80px;border-radius:8px;object-fit:cover;">';
+    } else {
+      html += '<div style="width:80px;height:80px;background:var(--green-wash);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:2rem;">🎵</div>';
+    }
+    html += '</div>';
+    html += '<div style="padding:0.5rem 0;">';
+    html += '<div style="font-weight:600;">' + escapeHtml(name) + '</div>';
+    html += '<div style="font-size:0.85rem;color:var(--text-muted);">' + escapeHtml(artist) + '</div>';
+    html += '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;">来源：' + platformLabel[platform] + '</div>';
+    if (note) html += '<div style="font-size:0.85rem;color:var(--text-light);margin-top:0.5rem;">' + escapeHtml(note) + '</div>';
+    html += '</div></div>';
+    openPreview(html);
+  }
+
+  function publishMusicShare() {
+    var name = document.getElementById('shareName').value.trim();
+    var artist = document.getElementById('shareArtist').value.trim();
+    if (!name) { alert('请填写歌曲名'); return; }
+    if (!artist) { alert('请填写歌手'); return; }
+
+    var item = {
+      id: genId('ms'),
+      name: name,
+      artist: artist,
+      cover: document.getElementById('shareCover').value.trim(),
+      platform: document.getElementById('sharePlatform').value,
+      link: document.getElementById('shareLink').value.trim(),
+      note: document.getElementById('shareNote').value.trim(),
+      date: new Date().toISOString()
+    };
+    addItem('musicshares', item);
+
+    // 清空
+    document.getElementById('shareLink').value = '';
+    document.getElementById('shareName').value = '';
+    document.getElementById('shareArtist').value = '';
+    document.getElementById('shareCover').value = '';
+    document.getElementById('shareNote').value = '';
+    document.getElementById('shareCoverPreview').innerHTML = '';
+    document.getElementById('shareFetchStatus').textContent = '';
+    refreshTabManage();
+  }
+
+  // ========== 微博导入 ==========
+
+  function showImportStats() {
+    if (typeof WEIBO_IMPORT === 'undefined') return;
+    var data = WEIBO_IMPORT;
+    document.getElementById('importTotal').textContent = data.essays.length + data.articles.length + data.photos.length;
+    document.getElementById('importEssayCount').textContent = data.essays.length;
+    document.getElementById('importArticleCount').textContent = data.articles.length;
+    document.getElementById('importPhotoCount').textContent = data.photos.length;
+  }
+
+  function startWeiboImport() {
+    if (typeof WEIBO_IMPORT === 'undefined') {
+      alert('未找到微博数据，请确认 data/weibo_import.js 已正确加载。');
+      return;
+    }
+    if (!confirm('将导入 ' +
+      WEIBO_IMPORT.essays.length + ' 条随笔 + ' +
+      WEIBO_IMPORT.articles.length + ' 篇文章 + ' +
+      WEIBO_IMPORT.photos.length + ' 张照片。\n\n已存在的相同内容会跳过。\n确认导入？')) return;
+
+    var btn = document.getElementById('importBtn');
+    btn.disabled = true;
+    btn.textContent = '导入中...';
+    document.getElementById('importProgress').style.display = 'block';
+    document.getElementById('importResult').style.display = 'none';
+
+    var data = loadData();
+    var existingIds = {};
+    ['essays','articles','photos'].forEach(function(type) {
+      (data[type] || []).forEach(function(item) {
+        if (item.weibo_id) existingIds[item.weibo_id] = true;
+      });
+    });
+
+    var toImport = WEIBO_IMPORT.essays.concat(WEIBO_IMPORT.articles).concat(WEIBO_IMPORT.photos);
+    var newItems = [];
+    for (var i = 0; i < toImport.length; i++) {
+      if (!existingIds[toImport[i].weibo_id]) {
+        newItems.push(toImport[i]);
+      }
+    }
+
+    if (newItems.length === 0) {
+      document.getElementById('importStatus').textContent = '没有新内容可导入，全部已存在。';
+      document.getElementById('importBar').style.width = '100%';
+      btn.disabled = false;
+      btn.textContent = '🚀 开始导入到网站';
+      document.getElementById('importResult').textContent = '✅ 已是最新，无需导入';
+      document.getElementById('importResult').style.display = 'block';
+      return;
+    }
+
+    var index = 0;
+    var total = newItems.length;
+
+    function importNext() {
+      if (index >= total) {
+        // 完成
+        document.getElementById('importStatus').textContent = '导入完成！共 ' + newItems.length + ' 条新内容。';
+        document.getElementById('importBar').style.width = '100%';
+        btn.disabled = false;
+        btn.textContent = '🚀 开始导入到网站';
+        document.getElementById('importResult').innerHTML = '✅ 成功导入 <strong>' + newItems.length + '</strong> 条内容！<br><span style="font-size:0.75rem;">访问网站前台即可查看。已有 ' + (toImport.length - newItems.length) + ' 条因重复跳过。</span>';
+        document.getElementById('importResult').style.display = 'block';
+        if (currentTab && currentTab !== 'weiboimport') {
+          refreshTabManage();
+        }
+        return;
+      }
+
+      // 每次处理 5 条，给 UI 喘息
+      var batch = Math.min(5, total - index);
+      var d = loadData();
+
+      for (var j = 0; j < batch; j++) {
+        var item = newItems[index + j];
+        if (!item.id) continue;
+
+        // 判断类型：有 src 的是照片，有 title 的是文章，其余是随笔
+        if (item.src !== undefined) {
+          if (!d.photos) d.photos = [];
+          d.photos.push({
+            id: item.id,
+            src: item.src,
+            caption: item.caption || '',
+            date: item.date,
+            weibo_id: item.weibo_id
+          });
+        } else if (item.title !== undefined) {
+          if (!d.articles) d.articles = [];
+          d.articles.push({
+            id: item.id,
+            title: item.title,
+            date: item.date,
+            body: item.body || '',
+            weibo_id: item.weibo_id
+          });
+        } else {
+          if (!d.essays) d.essays = [];
+          var essay = {
+            id: item.id,
+            text: item.text || '',
+            date: item.date,
+            weibo_id: item.weibo_id
+          };
+          if (item.photo) essay.photo = item.photo;
+          d.essays.push(essay);
+        }
+      }
+
+      saveData(d);
+      index += batch;
+
+      var pct = Math.round((index / total) * 100);
+      document.getElementById('importBar').style.width = pct + '%';
+      document.getElementById('importStatus').textContent = '正在导入... ' + index + ' / ' + total;
+
+      setTimeout(importNext, 80);
+    }
+
+    importNext();
+  }
+
+  // 切到导入标签时刷新统计
+  var origSwitchTab2 = switchTab;
+  switchTab = function(tab) {
+    origSwitchTab2(tab);
+    if (tab === 'weiboimport') {
+      showImportStats();
+    }
+  };
+
+  // 启动
+  initLogin();
+</script>
+
+</body>
+</html>

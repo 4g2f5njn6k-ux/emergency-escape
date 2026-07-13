@@ -1,0 +1,7 @@
+.DS_Store
+uploads/
+scripts/
+test-photo.html
+data/weibo_import.js
+data/weibo_raw.json
+data/playlist.json
