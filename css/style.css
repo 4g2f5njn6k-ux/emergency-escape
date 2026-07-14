@@ -467,6 +467,13 @@ body {
   font-size: 1.2rem;
   margin-bottom: 0.5rem;
   color: var(--green-soft);
+  text-decoration: none;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+  cursor: pointer;
+}
+.site-footer .footer-leaf:hover {
+  opacity: 0.8;
 }
 
 /* ===== 图片灯箱 ===== */
