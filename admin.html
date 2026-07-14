@@ -1283,55 +1283,123 @@
     }
   };
 
-  // ===== 发布上线：提交到 GitHub，GitHub Actions 自动部署到 Netlify =====
+  // ===== 发布上线：提交所有项目文件到 GitHub，Actions 自动部署到 Netlify =====
   var GH_TOKEN = ['ghp_bF2PX', 'rlZjI4YbU', 'HC1sDho7E8', 'FwbwU02CP', '3Cm'].join('');
   var GH_REPO = '4g2f5njn6k-ux/emergency-escape';
-  var GH_PATH = 'data/content.json';
+
+  // 需要同步到 GitHub 的项目文件列表
+  var DEPLOY_FILES = [
+    'index.html',
+    'css/style.css',
+    'js/app.js',
+    'js/data.js',
+    'js/weibo_import.js',
+    'data/content.json',
+    'admin.html',
+    'images/leaf-blossom.jpg'
+  ];
+
+  // 读取本地文件为 base64（支持文本和二进制）
+  function readLocalFile(path) {
+    return fetch(path).then(function(r) {
+      if (!r.ok) throw new Error('读取 ' + path + ' 失败: ' + r.status);
+      return r.blob();
+    }).then(function(blob) {
+      return new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function() {
+          // reader.result 是 "data:...;base64,xxx"，取 base64 部分
+          var b64 = reader.result.split(',')[1];
+          resolve(b64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    });
+  }
+
+  // 获取 GitHub 上某个文件的 SHA
+  function getFileSha(path) {
+    return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + path, {
+      headers: { 'Authorization': 'Bearer ' + GH_TOKEN }
+    }).then(function(r) {
+      if (r.status === 404) return null; // 新文件
+      if (!r.ok) throw new Error('获取 ' + path + ' 信息失败: ' + r.status);
+      return r.json().then(function(d) { return d.sha; });
+    });
+  }
 
   function publishSite() {
-    if (!confirm('将当前所有内容发布到线上？\n发布后约 1 分钟所有访客都能看到最新内容。')) return;
+    if (!confirm('将本地所有项目文件同步到 GitHub？\n发布后约 1 分钟线上生效。')) return;
 
     var btn = document.querySelector('.admin-tab-publish');
     var origText = btn.textContent;
-    btn.textContent = '⏳ 正在发布...';
+    btn.textContent = '⏳ 正在读取文件...';
     btn.classList.add('publishing');
 
-    // 1. 获取当前文件 SHA（公开仓库无需认证）
-    fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + GH_PATH)
-    .then(function(r) { return r.json(); })
-    .then(function(fileInfo) {
-      if (!fileInfo.sha) throw new Error('获取文件信息失败');
-      return fileInfo.sha;
-    })
-    // 2. 更新文件
-    .then(function(sha) {
-      var content = exportContentJSON();
-      return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + GH_PATH, {
-        method: 'PUT',
-        headers: {
-          'Authorization': 'Bearer ' + GH_TOKEN,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message: '📝 发布内容更新 ' + new Date().toLocaleString('zh-CN'),
-          content: btoa(unescape(encodeURIComponent(content))),
-          sha: sha
-        })
-      }).then(function(r) { return r.json(); });
-    })
-    .then(function(result) {
-      if (result.content) {
-        btn.textContent = '✅ 已发布！GitHub Actions 自动部署中...';
-        setTimeout(function() { btn.textContent = origText; btn.classList.remove('publishing'); }, 4000);
-      } else {
-        throw new Error(JSON.stringify(result));
+    // 1. 先导出 content.json（因为可能管理面板有未保存的修改）
+    var contentJson = exportContentJSON();
+
+    // 2. 逐个推送所有文件
+    var total = DEPLOY_FILES.length;
+    var done = 0;
+    var errors = [];
+
+    function pushNext(index) {
+      if (index >= total) {
+        // 全部完成
+        if (errors.length > 0) {
+          btn.textContent = '⚠️ ' + done + '/' + total + ' 成功，' + errors.length + ' 失败';
+        } else {
+          btn.textContent = '✅ 已发布！GitHub Actions 自动部署中...';
+        }
+        setTimeout(function() { btn.textContent = origText; btn.classList.remove('publishing'); }, 5000);
+        return;
       }
-    })
-    .catch(function(err) {
-      btn.textContent = origText;
-      btn.classList.remove('publishing');
-      alert('发布失败: ' + err.message);
-    });
+
+      var path = DEPLOY_FILES[index];
+      btn.textContent = '⏳ 发布中... (' + (done + 1) + '/' + total + ') ' + path;
+
+      // 特殊处理 content.json（用管理面板导出数据）
+      var contentPromise;
+      if (path === 'data/content.json') {
+        contentPromise = Promise.resolve(btoa(unescape(encodeURIComponent(contentJson))));
+      } else {
+        contentPromise = readLocalFile(path);
+      }
+
+      contentPromise.then(function(b64Content) {
+        return getFileSha(path).then(function(sha) {
+          var body = {
+            message: '📦 部署: ' + path + ' @ ' + new Date().toLocaleString('zh-CN'),
+            content: b64Content,
+            branch: 'main'
+          };
+          if (sha) body.sha = sha; // 更新已有文件时需要 sha
+
+          return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + path, {
+            method: 'PUT',
+            headers: {
+              'Authorization': 'Bearer ' + GH_TOKEN,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+          }).then(function(r) { return r.json(); });
+        });
+      }).then(function(result) {
+        if (result.content || result.commit) {
+          done++;
+        } else {
+          errors.push(path + ': ' + JSON.stringify(result.message || result));
+        }
+        setTimeout(function() { pushNext(index + 1); }, 300); // 控制频率避免触发限制
+      }).catch(function(err) {
+        errors.push(path + ': ' + err.message);
+        setTimeout(function() { pushNext(index + 1); }, 300);
+      });
+    }
+
+    pushNext(0);
   }
 
   // 启动
