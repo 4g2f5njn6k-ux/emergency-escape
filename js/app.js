@@ -110,8 +110,9 @@ function renderPage(page) {
 // ===== 首页 =====
 function renderHome(data) {
   let html = '';
+  html += '<img src="images/leaf-blossom.jpg" class="hero-banner" alt="绿叶梨花">';
   html += '<h1 class="page-title">Welcome</h1>';
-  html += '<p class="page-subtitle">阳光穿过树叶落在纸上</p>';
+  html += '<p class="page-subtitle">人类为何迷恋绿色。</p>';
 
   // 最近随笔（取3条）
   if (data.essays.length > 0) {
@@ -342,7 +343,7 @@ function viewGuide(id) {
 function renderAbout() {
   let html = '';
   html += '<div class="about-section">';
-  html += '<div class="about-avatar">🌿</div>';
+  html += '<div class="about-avatar"><img src="images/leaf-blossom.jpg" alt="🌿"></div>';
   html += '<div class="about-name">Emergency Escape</div>';
   html += '<p style="color:var(--text-muted);margin-bottom:1.5rem;font-size:0.9rem;">又名「自留地」</p>';
   html += '<div class="about-bio">';
