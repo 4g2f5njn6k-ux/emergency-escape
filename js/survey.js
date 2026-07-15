@@ -153,7 +153,11 @@
       });
       if (resp.ok) {
         const file = await resp.json();
-        surveys = JSON.parse(atob(file.content));
+        // 正确解码 UTF-8：atob 返回 Latin-1 二进制串，需还原为 Unicode
+        var binary = atob(file.content);
+        var bytes = new Uint8Array(binary.length);
+        for (var b = 0; b < binary.length; b++) { bytes[b] = binary.charCodeAt(b); }
+        surveys = JSON.parse(new TextDecoder('utf-8').decode(bytes));
       }
     } catch (e) {
       // 文件不存在，从头开始
