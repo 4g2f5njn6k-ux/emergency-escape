@@ -294,6 +294,21 @@
     .manage-delete:hover {
       background: #c0392b;
     }
+    .manage-edit {
+      flex-shrink: 0;
+      padding: 0.35rem 0.7rem;
+      background: var(--green-mid);
+      color: white;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-family: var(--font-cn);
+      transition: 0.2s;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+    .manage-edit:hover { background: var(--green-deep); }
     .manage-empty {
       padding: 2rem; text-align: center; color: var(--text-muted);
       font-size: 0.85rem;
@@ -347,104 +362,112 @@
       color: #991b1b; font-size: 0.8rem;
       font-family: monospace;
     }
-    /* ===== 全局变量覆盖 — 全部实色，拒绝虚色 ===== */
+
+    /* ===== 编辑弹窗 ===== */
+    .edit-modal-overlay {
+      position: fixed; top:0;left:0;width:100%;height:100%;
+      background: rgba(0,0,0,0.45); z-index: 10000;
+      display: none; align-items: center; justify-content: center;
+    }
+    .edit-modal-overlay.active { display: flex; }
+    .edit-modal-dialog {
+      background: #fdfbf7;
+      border-radius: 14px;
+      max-width: 480px; width: 90%;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+      overflow: hidden;
+    }
+    .edit-modal-header {
+      padding: 1rem 1.3rem; border-bottom: 1px solid rgba(58,107,76,0.1);
+    }
+    .edit-modal-header h3 { font-size: 1rem; margin: 0; color: #000; }
+    .edit-modal-body { padding: 1.3rem; }
+    .edit-modal-body textarea,
+    .edit-modal-body input {
+      width: 100%; padding: 0.7rem 0.9rem;
+      border: 1.5px solid rgba(58,107,76,0.2);
+      border-radius: 8px; font-size: 0.9rem; color: #000;
+      font-family: var(--font-cn); outline: none; resize: vertical;
+    }
+    .edit-modal-body textarea:focus,
+    .edit-modal-body input:focus { border-color: var(--green-mid); }
+    .edit-modal-body label {
+      display: block; font-size: 0.8rem; color: #000;
+      margin-bottom: 0.3rem; margin-top: 0.8rem; font-weight: 500;
+    }
+    .edit-modal-body label:first-child { margin-top: 0; }
+    .edit-modal-footer {
+      padding: 0.8rem 1.3rem; border-top: 1px solid rgba(58,107,76,0.1);
+      text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end;
+    }
+    .btn { padding: 0.45rem 1.2rem; border-radius: 8px; font-size: 0.85rem; cursor: pointer; border: none; font-family: var(--font-cn); }
+    .btn-ghost { background: none; color: #000; border: 1px solid rgba(58,107,76,0.2); }
+    .btn-primary { background: var(--green-mid); color: white; }
+    .btn-primary:hover { background: var(--green-deep); }
+    .btn-ghost:hover { background: rgba(58,107,76,0.05); }
+    .edit-loading { text-align: center; padding: 2rem; color: #000; }
+
+    /* ===== :root 变量 — 全线纯黑 ===== */
     :root {
-      --text: #111111;
-      --text-light: #222222;
-      --text-muted: #333333;
+      --text: #000 !important;
+      --text-light: #000 !important;
+      --text-muted: #000 !important;
     }
 
-    /* ===== 管理面板全局文字加粗加重 ===== */
-    .admin-wrap {
-      --admin-text: #111111;
-      --admin-sub: #222222;
-      --admin-muted: #333333;
-    }
-
-    /* 所有内联 style 引用了 var(--text-muted) 的元素，通过 :root 已经变黑 */
-    /* 下面补刀类选择器，把漏网之鱼也打实 */
-
-    .admin-wrap .post-label,
-    .admin-wrap .char-count,
+    /* ===== 核弹级覆盖：所有文字元素强制 #000，拒绝任何虚色 ===== */
+    .admin-wrap,
+    .admin-wrap div,
+    .admin-wrap span,
+    .admin-wrap p,
+    .admin-wrap a,
+    .admin-wrap label,
+    .admin-wrap li,
+    .admin-wrap td,
+    .admin-wrap th,
+    .admin-wrap h2,
+    .admin-wrap h3,
+    .admin-wrap h4,
+    .admin-wrap .admin-tab,
+    .admin-wrap .manage-text,
     .admin-wrap .manage-date,
     .admin-wrap .manage-empty,
-    .admin-wrap .admin-link,
-    .admin-wrap .btn-ghost {
-      color: #222 !important;
-      font-weight: 500;
-    }
-
-    .admin-wrap .manage-text {
-      color: #111 !important;
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
-    .admin-wrap .manage-date {
-      color: #333 !important;
-      font-weight: 500;
-      font-size: 0.75rem;
-    }
-
-    /* 管理列表 hover */
-    .admin-wrap .manage-item:hover { background: rgba(58,107,76,0.05); }
-
-    /* 发布卡片内文字 */
-    .admin-wrap .post-card .post-label {
-      color: #222;
-      font-weight: 600;
-    }
+    .admin-wrap .post-label,
     .admin-wrap .post-textarea,
-    .admin-wrap .post-input {
-      color: #111;
-      font-weight: 500;
-    }
-    .admin-wrap .post-textarea::placeholder,
-    .admin-wrap .post-input::placeholder {
-      color: #444 !important;
-    }
-
-    /* 标签页按钮 */
-    .admin-wrap .admin-tab {
-      color: #222;
-      font-weight: 500;
-    }
-
-    /* 问卷 */
-    .admin-wrap .q-item { color: #111; font-weight: 500; }
-    .admin-wrap .q-answer { color: #222; font-weight: 500; }
-
-    /* 预览弹窗 */
+    .admin-wrap .post-input,
+    .admin-wrap .char-count,
+    .admin-wrap .q-item,
+    .admin-wrap .q-answer,
+    .admin-wrap .tab-manage-count,
     .admin-wrap .preview-body,
-    .admin-wrap .preview-body .essay-date,
-    .admin-wrap .preview-body .article-preview .meta,
-    .admin-wrap .preview-body .photo-preview-caption,
-    .admin-wrap .preview-body .essay-text,
-    .admin-wrap .preview-body .article-preview .body,
-    .admin-wrap .preview-body .guide-preview .body,
-    .admin-wrap .preview-body .article-preview h2,
-    .admin-wrap .preview-body .guide-preview h2 {
-      color: #111;
-    }
-    .admin-wrap .preview-header span { color: #333; font-weight: 500; }
-
-    .admin-wrap .tab-manage-header { color: var(--green-deep); font-weight: 600; }
-
-    .admin-wrap .tab-manage-count {
-      color: #222;
-      background: rgba(58,107,76,0.08);
-      font-weight: 600;
+    .admin-wrap .preview-header span,
+    .admin-wrap .essay-date,
+    .admin-wrap .essay-text,
+    .admin-wrap .meta,
+    .admin-wrap .caption,
+    .admin-wrap .deploy-result-body,
+    .admin-wrap .admin-link,
+    .admin-wrap .btn-ghost,
+    .admin-wrap .import-info,
+    .admin-wrap .post-card,
+    .admin-wrap [style*="color:var(--text"],
+    .admin-wrap [style*="color: var(--text"] {
+      color: #000 !important;
+      font-weight: 500 !important;
     }
 
-    .deploy-result-body { color: #111; }
-    .deploy-result-body .err-item { color: #991b1b; }
-
-    .admin-wrap .login-card input::placeholder { color: #666; }
-
-    /* 搜索提示文字 */
-    .admin-wrap .manage-empty {
-      color: #333 !important;
-      font-weight: 500;
-    }
+    /* 恢复需要保留颜色的元素 */
+    .admin-wrap .manage-delete,
+    .admin-wrap .manage-delete * { color: #fff !important; }
+    .admin-wrap .btn-primary,
+    .admin-wrap .btn-primary * { color: #fff !important; }
+    .admin-wrap .login-btn { color: #fff !important; }
+    .admin-wrap .toast,
+    .admin-wrap .toast * { color: #fff !important; }
+    .admin-wrap .tab-manage-header { color: #1a4a2e !important; }
+    .admin-wrap .admin-tab.active { color: #1a4a2e !important; }
+    .deploy-result-body .err-item { color: #991b1b !important; }
+    .admin-wrap .login-error { color: #c0392b !important; }
+    .admin-wrap .manage-item:hover { background: rgba(58,107,76,0.05); }
   </style></head>
 <body>
 
@@ -489,6 +512,20 @@
   </div>
 </div>
 
+<!-- ===== 编辑弹窗 ===== -->
+<div class="edit-modal-overlay" id="editModalOverlay" onclick="if(event.target===this)closeEditModal()">
+  <div class="edit-modal-dialog">
+    <div class="edit-modal-header">
+      <h3 id="editModalTitle">编辑</h3>
+    </div>
+    <div class="edit-modal-body" id="editModalBody"></div>
+    <div class="edit-modal-footer">
+      <button class="btn btn-ghost" onclick="closeEditModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveEdit()">保存</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== 管理面板主体 ===== -->
 <div class="admin-wrap" id="adminMain" style="display:none;">
   <div class="admin-header">
@@ -505,6 +542,7 @@
     <button class="admin-tab" data-tab="article" onclick="switchTab('article')">📖 写文章</button>
     <button class="admin-tab" data-tab="photo" onclick="switchTab('photo')">📷 传照片</button>
     <button class="admin-tab" data-tab="guide" onclick="switchTab('guide')">🗺️ 记攻略</button>
+    <button class="admin-tab" data-tab="guestbook" onclick="switchTab('guestbook')">💬 留言</button>
     <button class="admin-tab" data-tab="musicctrl" onclick="switchTab('musicctrl')">🎵 音乐控制</button>
     <button class="admin-tab" data-tab="musicshare" onclick="switchTab('musicshare')">🎧 分享音乐</button>
     <button class="admin-tab" data-tab="weiboimport" onclick="switchTab('weiboimport')">📥 导入微博</button>
@@ -708,7 +746,7 @@
   </div>
 
   <div class="admin-link">
-    <a href='/' target='_blank'>→ 打开网站前台</a>
+    <a href="index.html" target="_blank">→ 打开网站前台</a>
   </div>
 </div>
 
@@ -871,6 +909,7 @@
     article:    { key: 'articles',    label: '文章',     icon: '📖' },
     photo:      { key: 'photos',      label: '照片',     icon: '📷' },
     guide:      { key: 'guides',      label: '攻略',     icon: '🗺️' },
+    guestbook:  { key: 'guestbook',   label: '留言',     icon: '💬' },
     musicshare: { key: 'musicshares', label: '音乐分享', icon: '🎧' },
   };
 
@@ -879,7 +918,7 @@
     document.querySelectorAll('.admin-tab').forEach(function(t) { t.classList.remove('active'); });
     var target = document.querySelector('.admin-tab[data-tab="' + tab + '"]');
     if (target) target.classList.add('active');
-    var allTabs = ['essay','article','photo','guide','musicctrl','musicshare','weiboimport','survey'];
+    var allTabs = ['essay','article','photo','guide','guestbook','musicctrl','musicshare','weiboimport','survey'];
     allTabs.forEach(function(t) {
       var el = document.getElementById('tab-' + t);
       if (el) el.style.display = t === tab ? 'block' : 'none';
@@ -1050,15 +1089,25 @@
 
   // ===== 删除（事件委托，不用内联 onclick） =====
   function handleManageClick(e) {
-    var btn = e.target.closest('.manage-delete');
-    if (!btn) return;
+    var delBtn = e.target.closest('.manage-delete');
+    var editBtn = e.target.closest('.manage-edit');
+    if (!delBtn && !editBtn) return;
     e.preventDefault();
     e.stopPropagation();
-    var typeKey = btn.getAttribute('data-type');
-    var id = btn.getAttribute('data-id');
-    if (!confirm('确定删除这条内容吗？此操作不可恢复。')) return;
-    deleteItem(typeKey, id);
-    refreshTabManage();
+
+    if (delBtn) {
+      var typeKey = delBtn.getAttribute('data-type');
+      var id = delBtn.getAttribute('data-id');
+      if (!confirm('确定删除这条内容吗？此操作不可恢复。')) return;
+      deleteItem(typeKey, id);
+      refreshTabManage();
+    }
+
+    if (editBtn) {
+      var typeKey = editBtn.getAttribute('data-type');
+      var id = editBtn.getAttribute('data-id');
+      openEditModal(typeKey, id);
+    }
   }
 
   // ===== 刷新管理列表 =====
@@ -1089,16 +1138,116 @@
         if (currentTab === 'photo')      text = item.caption || '(无说明)';
         if (currentTab === 'guide')      text = item.title;
         if (currentTab === 'musicshare') text = item.name + ' - ' + item.artist;
+        if (currentTab === 'guestbook') text = item.name + ': ' + item.text;
 
         html += '<div class="manage-item">';
         html += '<span class="manage-text" title="' + escapeHtml(text) + '">' + escapeHtml(text) + '</span>';
         html += '<span class="manage-date">' + formatDate(item.date) + '</span>';
+        html += '<button class="manage-edit" data-type="' + info.key + '" data-id="' + item.id + '">编辑</button>';
         html += '<button class="manage-delete" data-type="' + info.key + '" data-id="' + item.id + '">删除</button>';
         html += '</div>';
       });
     }
 
     container.innerHTML = html;
+  }
+
+  // ===== 编辑弹窗 =====
+  var _editTypeKey = '', _editId = '';
+
+  function openEditModal(typeKey, id) {
+    _editTypeKey = typeKey;
+    _editId = id;
+    var data = loadData();
+    var items = data[typeKey] || [];
+    var item = items.find(function(it) { return it.id === id; });
+    if (!item) { toast('找不到这条内容'); return; }
+
+    var title = '编辑' + (tabTypeMap[currentTab] ? tabTypeMap[currentTab].label : '内容');
+    document.getElementById('editModalTitle').textContent = title;
+
+    var body = document.getElementById('editModalBody');
+    var html = '';
+
+    if (typeKey === 'guestbook') {
+      html += '<label>昵称</label>';
+      html += '<input id="editField_name" value="' + escapeHtml(item.name || '') + '" maxlength="30">';
+      html += '<label>留言内容</label>';
+      html += '<textarea id="editField_text" rows="3" maxlength="500">' + escapeHtml(item.text || '') + '</textarea>';
+    } else if (typeKey === 'essays') {
+      html += '<label>内容</label>';
+      html += '<textarea id="editField_text" rows="4" maxlength="500">' + escapeHtml(item.text || '') + '</textarea>';
+    } else if (typeKey === 'articles') {
+      html += '<label>标题</label>';
+      html += '<input id="editField_title" value="' + escapeHtml(item.title || '') + '" maxlength="100">';
+      html += '<label>正文</label>';
+      html += '<textarea id="editField_body" rows="6" maxlength="5000">' + escapeHtml(item.body || '') + '</textarea>';
+    } else if (typeKey === 'photos') {
+      html += '<label>说明</label>';
+      html += '<input id="editField_caption" value="' + escapeHtml(item.caption || '') + '" maxlength="200">';
+    } else if (typeKey === 'guides') {
+      html += '<label>标题</label>';
+      html += '<input id="editField_title" value="' + escapeHtml(item.title || '') + '" maxlength="100">';
+      html += '<label>正文</label>';
+      html += '<textarea id="editField_body" rows="6" maxlength="5000">' + escapeHtml(item.body || '') + '</textarea>';
+    } else if (typeKey === 'musicshares') {
+      html += '<label>歌名</label>';
+      html += '<input id="editField_name" value="' + escapeHtml(item.name || '') + '" maxlength="100">';
+      html += '<label>歌手</label>';
+      html += '<input id="editField_artist" value="' + escapeHtml(item.artist || '') + '" maxlength="100">';
+      html += '<label>备注</label>';
+      html += '<input id="editField_note" value="' + escapeHtml(item.note || '') + '" maxlength="500">';
+    } else {
+      body.innerHTML = '<div class="edit-loading">暂不支持编辑此类型</div>';
+      return;
+    }
+
+    body.innerHTML = html;
+    document.getElementById('editModalOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeEditModal() {
+    document.getElementById('editModalOverlay').classList.remove('active');
+    document.body.style.overflow = '';
+    _editTypeKey = '';
+    _editId = '';
+  }
+
+  function saveEdit() {
+    var data = loadData();
+    var items = data[_editTypeKey] || [];
+    var item = items.find(function(it) { return it.id === _editId; });
+    if (!item) { toast('找不到这条内容'); closeEditModal(); return; }
+
+    if (_editTypeKey === 'guestbook') {
+      item.name = document.getElementById('editField_name').value.trim() || '匿名';
+      item.text = document.getElementById('editField_text').value.trim();
+      if (!item.text) { toast('留言内容不能为空'); return; }
+    } else if (_editTypeKey === 'essays') {
+      item.text = document.getElementById('editField_text').value.trim();
+      if (!item.text) { toast('内容不能为空'); return; }
+    } else if (_editTypeKey === 'articles') {
+      item.title = document.getElementById('editField_title').value.trim();
+      item.body = document.getElementById('editField_body').value.trim();
+      if (!item.title) { toast('标题不能为空'); return; }
+    } else if (_editTypeKey === 'photos') {
+      item.caption = document.getElementById('editField_caption').value.trim();
+    } else if (_editTypeKey === 'guides') {
+      item.title = document.getElementById('editField_title').value.trim();
+      item.body = document.getElementById('editField_body').value.trim();
+      if (!item.title) { toast('标题不能为空'); return; }
+    } else if (_editTypeKey === 'musicshares') {
+      item.name = document.getElementById('editField_name').value.trim();
+      item.artist = document.getElementById('editField_artist').value.trim();
+      item.note = document.getElementById('editField_note').value.trim();
+      if (!item.name) { toast('歌名不能为空'); return; }
+    }
+
+    saveData(data);
+    toast('已保存');
+    closeEditModal();
+    refreshTabManage();
   }
 
   function initAdmin() {
