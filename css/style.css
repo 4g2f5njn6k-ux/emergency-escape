@@ -36,6 +36,39 @@ body {
   line-height: 1.8;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  position: relative;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='24'%3E🍟%3C/text%3E%3C/svg%3E") 16 16, auto;
+}
+
+/* 全站🍟光标 */
+a, button, .card, .essay-item, .photo-bubble, .card-photos img,
+.essay-photo, .nav-links a, .lightbox, .brand, .home-block,
+[onclick], input[type="submit"], input[type="button"] {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='24'%3E🍟%3C/text%3E%3C/svg%3E") 16 16, auto;
+}
+
+/* 全页梨花图半透背景 */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: url('../images/leaf-blossom.jpg') center/cover no-repeat;
+  background-attachment: fixed;
+  opacity: 0.12;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* 中心渐变蒙版 — 引导视线聚焦内容，边缘更透 */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: radial-gradient(ellipse at 50% 40%, rgba(249,248,244,0.65) 0%, rgba(249,248,244,0.35) 60%, rgba(249,248,244,0.15) 100%);
+  z-index: 0;
+  pointer-events: none;
 }
 
 /* ===== 顶部导航 ===== */
@@ -122,6 +155,8 @@ body {
   margin: 0 auto;
   padding: 3rem 1.5rem 5rem;
   min-height: calc(100vh - 180px);
+  position: relative;
+  z-index: 1;
 }
 
 /* ===== 页面标题 ===== */
@@ -280,22 +315,35 @@ body {
 
 /* ===== 相册 ===== */
 .photo-grid {
-  columns: 3;
-  column-gap: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 1rem 0;
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
 }
 
-.photo-grid img {
-  width: 100%;
-  border-radius: var(--radius-sm);
-  margin-bottom: 0.8rem;
+.photo-bubble {
+  border-radius: 50%;
+  overflow: hidden;
   cursor: pointer;
-  transition: var(--transition);
-  display: block;
+  flex-shrink: 0;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease;
+  box-shadow: 0 4px 20px rgba(45,90,63,0.12);
 }
 
-.photo-grid img:hover {
-  transform: scale(1.02);
-  box-shadow: var(--shadow-hover);
+.photo-bubble:hover {
+  transform: scale(1.12);
+  box-shadow: 0 8px 36px rgba(45,90,63,0.22);
+}
+
+.photo-bubble img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 /* ===== 留言板 ===== */
@@ -449,7 +497,10 @@ body {
   border-color: var(--green-mid);
 }
 
-/* ===== 页脚 ===== */
+/* 首页区块 */
+.home-block {
+  margin-bottom: 2.5rem;
+}
 .site-footer {
   text-align: center;
   padding: 2rem 1.5rem;
@@ -457,6 +508,8 @@ body {
   font-size: 0.8rem;
   border-top: 1px solid rgba(58, 107, 76, 0.06);
   letter-spacing: 0.5px;
+  position: relative;
+  z-index: 1;
 }
 
 .site-footer .footer-leaf {
@@ -575,7 +628,7 @@ body {
 
   .page-title { font-size: 1.6rem; }
 
-  .photo-grid { columns: 2; }
+  .photo-grid { gap: 0.75rem; }
 
   .card-photos {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -583,18 +636,55 @@ body {
 }
 
 @media (max-width: 480px) {
-  .photo-grid { columns: 1; }
+  .photo-grid { gap: 0.6rem; }
   .brand-en { font-size: 1.1rem; }
 }
 
-/* ===== 入场动画 ===== */
+/* ===== 页面过渡动画 ===== */
+
+/* 退出：上浮缩小模糊 */
+@keyframes pageExit {
+  from { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  to   { opacity: 0; transform: translateY(-12px) scale(0.97); filter: blur(2px); }
+}
+
+/* 进入：从下弹入，微弱过冲回弹 */
+@keyframes pageEnter {
+  0%   { opacity: 0; transform: translateY(28px) scale(0.96); }
+  65%  { opacity: 1; transform: translateY(-3px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.page-section {
+  animation: pageEnter 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+.page-section.exiting {
+  animation: pageExit 0.2s ease forwards;
+  pointer-events: none;
+}
+
+/* 内容项交错入场 */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.page-section {
-  animation: fadeInUp 0.5s ease forwards;
+/* 导航链接点击波纹 */
+.nav-links a {
+  position: relative;
+  overflow: hidden;
+}
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, var(--green-soft) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.nav-links a:active::after {
+  opacity: 0.12;
 }
 
 .essay-item:nth-child(1) { animation-delay: 0.05s; }
@@ -637,23 +727,6 @@ body {
 @keyframes breathe {
   0%, 100% { transform: scale(1); opacity: 0.9; }
   50% { transform: scale(1.06); opacity: 1; }
-}
-
-.hero-banner {
-  width: 100%;
-  max-width: 400px;
-  height: 200px;
-  border-radius: 12px;
-  object-fit: cover;
-  object-position: center top;
-  margin: 0 auto 2rem;
-  display: block;
-  opacity: 0.7;
-  box-shadow: 0 4px 24px rgba(45,90,63,0.1);
-  transition: opacity 0.6s ease;
-}
-.hero-banner:hover {
-  opacity: 1;
 }
 
 .about-avatar img {
@@ -1149,33 +1222,17 @@ body {
   margin-bottom: 1rem;
 }
 
-.fortune-score-ring {
-  --score: 50;
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto;
-  background: conic-gradient(
-    var(--green-mid) calc(var(--score) * 1%),
-    var(--green-wash) 0
-  );
-  position: relative;
+.fortune-fry {
+  font-size: 2rem;
+  text-align: center;
+  line-height: 1.4;
+  animation: fryBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.fortune-score-ring::before {
-  content: '';
-  position: absolute;
-  inset: 6px;
-  border-radius: 50%;
-  background: var(--paper-warm);
-}
-.fortune-score-ring span {
-  position: relative;
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--green-deep);
+
+@keyframes fryBounce {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .fortune-score-label {
@@ -1296,3 +1353,147 @@ body {
 
 .quote-fade-out { opacity: 0; }
 .quote-fade-in { animation: fadeInUp 0.5s ease forwards; }
+
+/* ===== 问卷弹窗 ===== */
+.survey-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  overflow-y: auto;
+  padding: 1rem;
+  backdrop-filter: blur(4px);
+}
+.survey-overlay.active { opacity: 1; }
+
+.survey-modal {
+  background: #fdfcf8;
+  border-radius: 20px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  animation: surveyIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes surveyIn {
+  from { transform: translateY(30px) scale(0.95); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.survey-header {
+  padding: 2rem 2rem 0.5rem;
+  text-align: center;
+}
+.survey-icon { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
+.survey-header h2 {
+  font-size: 1.3rem;
+  color: var(--green-deep);
+  margin: 0 0 0.3rem;
+}
+.survey-sub {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.survey-body { padding: 1rem 2rem; }
+
+.survey-field {
+  margin-bottom: 1.2rem;
+}
+.survey-field label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--green-deep);
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  line-height: 1.5;
+}
+.survey-required { color: #e74c3c; }
+.survey-field input[type="text"] {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1.5px solid #d4cfc4;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: #fff;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+.survey-field input[type="text"]:focus {
+  outline: none;
+  border-color: var(--green-mid);
+  box-shadow: 0 0 0 3px rgba(58,107,76,0.08);
+}
+.survey-field textarea {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1.5px solid #d4cfc4;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: #fff;
+  resize: vertical;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+  line-height: 1.6;
+}
+.survey-field textarea:focus {
+  outline: none;
+  border-color: var(--green-mid);
+  box-shadow: 0 0 0 3px rgba(58,107,76,0.08);
+}
+.survey-last {
+  background: #fdf6ee;
+  border-radius: 12px;
+  padding: 1rem;
+  border: 1px dashed #e8c97a;
+}
+.survey-last label { color: #8b6914; }
+
+.survey-footer {
+  padding: 1rem 2rem 2rem;
+  display: flex;
+  gap: 0.8rem;
+  justify-content: flex-end;
+}
+.survey-btn-skip {
+  padding: 0.6rem 1.5rem;
+  border: 1px solid #ccc;
+  background: transparent;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.survey-btn-skip:hover { border-color: #999; color: #666; }
+.survey-btn-submit {
+  padding: 0.6rem 1.8rem;
+  border: none;
+  background: var(--green-mid);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.survey-btn-submit:hover { background: var(--green-deep); transform: translateY(-1px); }
+.survey-btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  50% { transform: translateX(6px); }
+  75% { transform: translateX(-4px); }
+}

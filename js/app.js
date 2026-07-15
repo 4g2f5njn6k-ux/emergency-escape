@@ -69,7 +69,14 @@ function toggleMobileNav() {
   document.getElementById('mobileNav').classList.toggle('open');
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function navigate(page) {
+  // 同页不刷新
+  if (page === currentPage && document.querySelector('.page-section')) return;
+
   currentPage = page;
   window.location.hash = page;
 
@@ -82,12 +89,21 @@ async function navigate(page) {
   });
 
   const main = document.getElementById('mainContent');
+  const oldSection = main.querySelector('.page-section');
+
+  // 退出旧页面
+  if (oldSection) {
+    oldSection.classList.add('exiting');
+    await sleep(200);
+  }
+
+  // 渲染新页面
   main.innerHTML = '<div class="page-section">' + renderPage(page) + '</div>';
 
   // 导航后处理（灯箱绑定等）
   afterNavigate();
 
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
 function renderPage(page) {
@@ -110,27 +126,32 @@ function renderPage(page) {
 // ===== 首页 =====
 function renderHome(data) {
   let html = '';
-  html += '<img src="images/leaf-blossom.jpg" class="hero-banner" alt="绿叶梨花">';
+  // 标题微动画 — 页面入场后再浮出
+  html += '<div style="animation:fadeInUp 0.5s ease forwards;animation-delay:0.05s;opacity:0;">';
   html += '<h1 class="page-title">Welcome</h1>';
   html += '<p class="page-subtitle">人类为何迷恋绿色。</p>';
+  html += '</div>';
+
+  let blockIdx = 0;
 
   // 最近随笔（取3条）
   if (data.essays.length > 0) {
-    html += '<div style="margin-bottom:2.5rem">';
+    html += `<div class="home-block" style="animation:fadeInUp 0.5s ease forwards;animation-delay:${0.12 + blockIdx * 0.1}s;opacity:0;">`;
     html += '<h3 style="color:var(--green-mid);margin-bottom:1rem;font-size:1rem;">📝 最近碎片</h3>';
     data.essays.slice(0, 3).forEach(essay => {
-      html += `<div class="essay-item" style="animation: fadeInUp 0.5s ease forwards;">
+      html += `<div class="essay-item">
         <div class="essay-text">${escapeHtml(essay.text)}</div>
         <div class="essay-date">${formatDate(essay.date)}</div>
       </div>`;
     });
     html += `<a href="#essays" onclick="navigate('essays');return false" style="display:inline-block;margin-top:0.8rem;color:var(--green-mid);font-size:0.85rem;text-decoration:none;">查看全部随笔 →</a>`;
     html += '</div>';
+    blockIdx++;
   }
 
   // 最近文章（取2条）
   if (data.articles.length > 0) {
-    html += '<div style="margin-bottom:2.5rem">';
+    html += `<div class="home-block" style="animation:fadeInUp 0.5s ease forwards;animation-delay:${0.12 + blockIdx * 0.1}s;opacity:0;">`;
     html += '<h3 style="color:var(--green-mid);margin-bottom:1rem;font-size:1rem;">📖 最近文章</h3>';
     data.articles.slice(0, 2).forEach(article => {
       html += `<div class="card" onclick="viewArticle('${article.id}');return false" style="cursor:pointer">
@@ -144,12 +165,13 @@ function renderHome(data) {
     });
     html += '<a href="#articles" onclick="navigate(\'articles\');return false" style="display:inline-block;margin-top:0.4rem;color:var(--green-mid);font-size:0.85rem;text-decoration:none;">查看全部文章 →</a>';
     html += '</div>';
+    blockIdx++;
   }
 
   // 最近照片
   const photosWithSrc = data.photos.filter(p => p.src);
   if (photosWithSrc.length > 0) {
-    html += '<div style="margin-bottom:2.5rem">';
+    html += `<div class="home-block" style="animation:fadeInUp 0.5s ease forwards;animation-delay:${0.12 + blockIdx * 0.1}s;opacity:0;">`;
     html += '<h3 style="color:var(--green-mid);margin-bottom:1rem;font-size:1rem;">📷 最近照片</h3>';
     html += '<div class="card-photos">';
     photosWithSrc.slice(0, 6).forEach(photo => {
@@ -158,13 +180,14 @@ function renderHome(data) {
     html += '</div>';
     html += '<a href="#photos" onclick="navigate(\'photos\');return false" style="display:inline-block;margin-top:0.8rem;color:var(--green-mid);font-size:0.85rem;text-decoration:none;">查看全部照片 →</a>';
     html += '</div>';
+    blockIdx++;
   }
 
   // 玩玩入口
-  html += '<div style="margin-bottom:2rem">';
+  html += `<div class="home-block" style="animation:fadeInUp 0.5s ease forwards;animation-delay:${0.12 + blockIdx * 0.1}s;opacity:0;">`;
   html += '<h3 style="color:var(--green-mid);margin-bottom:1rem;font-size:1rem;">🎲 玩玩</h3>';
   html += '<div class="card" onclick="navigate(\'fun\')" style="cursor:pointer;text-align:center;padding:2rem;">';
-  html += '<div style="font-size:2rem;margin-bottom:0.5rem;">🎰🍜🎲🌸</div>';
+  html += '<div style="font-size:2rem;margin-bottom:0.5rem;">🍟🍜🎲🌸</div>';
   html += '<div style="color:var(--green-deep);font-weight:600;margin-bottom:0.3rem;">今日运势 · 吃什么 · 选择困难症 · 每日一言</div>';
   html += '<div style="font-size:0.8rem;color:var(--text-muted);">点进来玩玩 →</div>';
   html += '</div>';
@@ -186,14 +209,14 @@ function renderHome(data) {
 function renderEssays(essays) {
   let html = '';
   html += '<h1 class="page-title">Fragments</h1>';
-  html += '<p class="page-subtitle">落在地上的光斑</p>';
+  html += '<p class="page-subtitle">你对我来说也是最珍贵的。</p>';
 
   if (essays.length === 0) {
     html += '<div class="empty-state"><span class="empty-icon">🍃</span><p>还没有碎碎念</p></div>';
   } else {
     html += '<div class="essay-feed">';
     essays.forEach((essay, i) => {
-      html += `<div class="essay-item" style="animation: fadeInUp 0.5s ease forwards; animation-delay: ${i * 0.05}s;">
+      html += `<div class="essay-item" style="animation: fadeInUp 0.5s ease forwards; animation-delay: ${i * 0.06}s;">
         <div class="essay-text">${escapeHtml(essay.text)}</div>`;
       if (essay.photo) {
         html += `<img src="${essay.photo}" alt="" class="essay-photo" loading="lazy" referrerpolicy="no-referrer" onclick="openLightbox('${essay.photo}')">`;
@@ -233,7 +256,7 @@ function renderArticles(articles) {
     } else {
       // 文章列表
       articles.forEach((article, i) => {
-        html += `<div class="card" style="cursor:pointer;animation:fadeInUp 0.5s ease forwards;animation-delay:${i*0.05}s" onclick="viewArticle('${article.id}')">
+        html += `<div class="card" style="cursor:pointer;animation:fadeInUp 0.5s ease forwards;animation-delay:${i*0.07}s" onclick="viewArticle('${article.id}')">
           <div class="card-meta">
             <span class="card-category">文章</span>
             <span>${formatDate(article.date)}</span>
@@ -248,11 +271,17 @@ function renderArticles(articles) {
   return html;
 }
 
-function viewArticle(id) {
+async function viewArticle(id) {
   const main = document.getElementById('mainContent');
   const data = loadData();
   const article = data.articles.find(a => a.id === id);
   if (!article) return;
+
+  const oldSection = main.querySelector('.page-section');
+  if (oldSection) {
+    oldSection.classList.add('exiting');
+    await sleep(200);
+  }
 
   let html = '<div class="page-section">';
   html += '<div class="article-full">';
@@ -265,25 +294,41 @@ function viewArticle(id) {
 
   main.innerHTML = html;
   afterNavigate();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
 // ===== 相册 =====
 function renderPhotos(photos) {
   let html = '';
   html += '<h1 class="page-title">Gallery</h1>';
-  html += '<p class="page-subtitle">按下快门的瞬间</p>';
+  html += '<p class="page-subtitle">彩色的泡泡🫧</p>';
 
   const photosWithSrc = photos.filter(p => p.src);
   if (photosWithSrc.length === 0) {
     html += '<div class="empty-state"><span class="empty-icon">📷</span><p>还没有照片</p></div>';
   } else {
+    const bubbleColors = [
+      'rgba(135,206,250,0.5)',
+      'rgba(255,182,193,0.5)',
+      'rgba(216,191,216,0.5)',
+      'rgba(144,238,144,0.45)',
+      'rgba(255,218,185,0.5)',
+      'rgba(230,230,250,0.5)',
+      'rgba(255,218,221,0.5)',
+      'rgba(173,216,230,0.5)',
+    ];
+    const sizes = [130, 160, 190, 220, 250];
+
     html += '<div class="photo-grid">';
-    photosWithSrc.forEach(photo => {
-      html += `<div style="break-inside:avoid;margin-bottom:0.8rem;">
-        <img src="${photo.src}" alt="${escapeHtml(photo.caption || '')}" loading="lazy" referrerpolicy="no-referrer" onclick="openLightbox('${photo.src}')" style="width:100%;border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);display:block;">
-        ${photo.caption ? `<p style="font-size:0.8rem;color:var(--text-muted);text-align:center;margin-top:0.3rem;">${escapeHtml(photo.caption)}</p>` : ''}
+    photosWithSrc.forEach((photo, i) => {
+      const size = sizes[i % sizes.length];
+      const color = bubbleColors[Math.floor(Math.random() * bubbleColors.length)];
+      html += `<div class="photo-bubble" style="width:${size}px;height:${size}px;border:3px solid ${color};" onclick="openLightbox('${photo.src}')">
+        <img src="${photo.src}" alt="${escapeHtml(photo.caption || '')}" loading="lazy" referrerpolicy="no-referrer">
       </div>`;
+      if (photo.caption) {
+        html += `<div class="photo-bubble-caption" style="width:${size}px;text-align:center;margin-top:-0.3rem;font-size:0.75rem;color:var(--text-muted);">${escapeHtml(photo.caption)}</div>`;
+      }
     });
     html += '</div>';
   }
@@ -315,7 +360,7 @@ function renderGuides(guides) {
       }
     } else {
       guides.forEach((guide, i) => {
-        html += `<div class="card" style="cursor:pointer;animation:fadeInUp 0.5s ease forwards;animation-delay:${i*0.05}s" onclick="viewGuide('${guide.id}')">
+        html += `<div class="card" style="cursor:pointer;animation:fadeInUp 0.5s ease forwards;animation-delay:${i*0.07}s" onclick="viewGuide('${guide.id}')">
           <div class="card-meta">
             <span class="card-category">攻略</span>
             <span>${formatDate(guide.date)}</span>
@@ -330,13 +375,20 @@ function renderGuides(guides) {
   return html;
 }
 
-function viewGuide(id) {
+async function viewGuide(id) {
   window.location.hash = 'guides?id=' + id;
   const main = document.getElementById('mainContent');
   const data = loadData();
+
+  const oldSection = main.querySelector('.page-section');
+  if (oldSection) {
+    oldSection.classList.add('exiting');
+    await sleep(200);
+  }
+
   main.innerHTML = '<div class="page-section">' + renderGuides(data.guides) + '</div>';
   afterNavigate();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
 // ===== 关于 =====
@@ -460,6 +512,7 @@ function openLightbox(src) {
   img.src = src;
   lb.classList.add('active');
   document.body.style.overflow = 'hidden';
+
 }
 
 function closeLightbox() {
@@ -564,11 +617,11 @@ function renderFun() {
 
   // 今日运势
   html += '<div class="fun-card" id="fortuneCard">';
-  html += '<div class="fun-card-header"><span class="fun-icon">🎰</span><span class="fun-title">今日运势抽签</span></div>';
+  html += '<div class="fun-card-header"><span class="fun-icon">🍟</span><span class="fun-title">今日运势抽签</span></div>';
   html += '<div class="fun-card-body" id="fortuneBody">';
   html += '<div class="fortune-empty">点击下方按钮，抽取今日运势 ✨</div>';
   html += '</div>';
-  html += '<button class="btn fun-btn" onclick="drawFortune()">抽 签</button>';
+  html += '<button class="btn fun-btn" onclick="drawFortune()">来一根 🍟</button>';
   html += '</div>';
 
   // 今天吃什么
@@ -612,16 +665,18 @@ function drawFortune() {
   const fortune = FORTUNES[seed % FORTUNES.length];
   const body = document.getElementById('fortuneBody');
 
-  // 抽签动画
-  body.innerHTML = '<div class="fortune-drawing">🔮 抽签中...</div>';
+  // 抽签动画 - 摇晃的薯条盒
+  body.innerHTML = '<div class="fortune-drawing">🍟 摇一根...</div>';
 
   setTimeout(() => {
+    // 根据运势指数映射不同数量的薯条
+    const fries = fortune.score >= 90 ? '🍟🍟🍟🍟🍟' :
+                 fortune.score >= 80 ? '🍟🍟🍟🍟' :
+                 fortune.score >= 70 ? '🍟🍟🍟' : '🍟🍟';
     let html = '<div class="fortune-result">';
     html += '<div class="fortune-score">';
-    html += '<div class="fortune-score-ring" style="--score:' + fortune.score + '">';
-    html += '<span>' + fortune.score + '</span>';
-    html += '</div>';
-    html += '<div class="fortune-score-label">运势指数</div>';
+    html += '<div class="fortune-fry">' + fries + '</div>';
+    html += '<div class="fortune-score-label">运势指数 ' + fortune.score + '</div>';
     html += '</div>';
     html += '<div class="fortune-text">' + escapeHtml(fortune.text) + '</div>';
     html += '<div class="fortune-detail"><span class="fortune-tag">🎨 幸运色</span> ' + escapeHtml(fortune.luck_color) + '</div>';
