@@ -347,49 +347,74 @@
       color: #991b1b; font-size: 0.8rem;
       font-family: monospace;
     }
-    /* ===== 全局变量覆盖 — 管理页面专属深色文字 ===== */
+    /* ===== 全局变量覆盖 — 全部实色，拒绝虚色 ===== */
     :root {
-      --text: #1a1a2e;
-      --text-light: #3d4a5c;
-      --text-muted: #5a6b7a;
+      --text: #111111;
+      --text-light: #222222;
+      --text-muted: #333333;
     }
 
-    /* ===== 管理面板 — 数据颜色加深（提升可读性） ===== */
+    /* ===== 管理面板全局文字加粗加重 ===== */
     .admin-wrap {
-      --admin-text: #1a1a2e;
-      --admin-sub: #4a5568;
-      --admin-muted: #5a6b7a;
+      --admin-text: #111111;
+      --admin-sub: #222222;
+      --admin-muted: #333333;
     }
-    /* 覆盖全局 --text-muted → 更深的颜色 */
+
+    /* 所有内联 style 引用了 var(--text-muted) 的元素，通过 :root 已经变黑 */
+    /* 下面补刀类选择器，把漏网之鱼也打实 */
+
     .admin-wrap .post-label,
     .admin-wrap .char-count,
     .admin-wrap .manage-date,
     .admin-wrap .manage-empty,
     .admin-wrap .admin-link,
-    .admin-wrap .btn-ghost { color: var(--admin-sub); }
-
-    /* 卡片内辅助文字 */
-    .admin-wrap .post-textarea::placeholder,
-    .admin-wrap .post-input::placeholder { color: var(--admin-muted); }
-
-    /* 非活跃标签 */
-    .admin-wrap .admin-tab { color: var(--admin-sub); }
-
-    /* 管理列表项文字进一步加黑 */
-    .admin-wrap .manage-text { color: var(--admin-text); font-weight: 450; }
-
-    .admin-wrap .manage-item:hover { background: rgba(58,107,76,0.05); }
-
-    /* 问卷答题区域文字 */
-    .admin-wrap .q-item { color: var(--admin-text); }
-    .admin-wrap .q-answer { color: var(--admin-sub); }
-
-    /* 发布卡片标签 */
-    .admin-wrap .post-card .post-label {
-      color: var(--admin-sub);
+    .admin-wrap .btn-ghost {
+      color: #222 !important;
       font-weight: 500;
     }
 
+    .admin-wrap .manage-text {
+      color: #111 !important;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .admin-wrap .manage-date {
+      color: #333 !important;
+      font-weight: 500;
+      font-size: 0.75rem;
+    }
+
+    /* 管理列表 hover */
+    .admin-wrap .manage-item:hover { background: rgba(58,107,76,0.05); }
+
+    /* 发布卡片内文字 */
+    .admin-wrap .post-card .post-label {
+      color: #222;
+      font-weight: 600;
+    }
+    .admin-wrap .post-textarea,
+    .admin-wrap .post-input {
+      color: #111;
+      font-weight: 500;
+    }
+    .admin-wrap .post-textarea::placeholder,
+    .admin-wrap .post-input::placeholder {
+      color: #444 !important;
+    }
+
+    /* 标签页按钮 */
+    .admin-wrap .admin-tab {
+      color: #222;
+      font-weight: 500;
+    }
+
+    /* 问卷 */
+    .admin-wrap .q-item { color: #111; font-weight: 500; }
+    .admin-wrap .q-answer { color: #222; font-weight: 500; }
+
+    /* 预览弹窗 */
+    .admin-wrap .preview-body,
     .admin-wrap .preview-body .essay-date,
     .admin-wrap .preview-body .article-preview .meta,
     .admin-wrap .preview-body .photo-preview-caption,
@@ -397,22 +422,29 @@
     .admin-wrap .preview-body .article-preview .body,
     .admin-wrap .preview-body .guide-preview .body,
     .admin-wrap .preview-body .article-preview h2,
-    .admin-wrap .preview-body .guide-preview h2 { color: var(--admin-text); }
-    
-    .admin-wrap .preview-header span { color: var(--admin-sub); }
+    .admin-wrap .preview-body .guide-preview h2 {
+      color: #111;
+    }
+    .admin-wrap .preview-header span { color: #333; font-weight: 500; }
 
-    .admin-wrap .tab-manage-header { color: var(--green-deep); font-weight: 500; }
+    .admin-wrap .tab-manage-header { color: var(--green-deep); font-weight: 600; }
 
     .admin-wrap .tab-manage-count {
-      color: var(--admin-sub);
+      color: #222;
       background: rgba(58,107,76,0.08);
-      font-weight: 500;
+      font-weight: 600;
     }
 
-    .deploy-result-body { color: var(--admin-text); }
+    .deploy-result-body { color: #111; }
     .deploy-result-body .err-item { color: #991b1b; }
 
-    .admin-wrap .login-card input::placeholder { color: var(--admin-muted); }
+    .admin-wrap .login-card input::placeholder { color: #666; }
+
+    /* 搜索提示文字 */
+    .admin-wrap .manage-empty {
+      color: #333 !important;
+      font-weight: 500;
+    }
   </style></head>
 <body>
 
@@ -676,7 +708,7 @@
   </div>
 
   <div class="admin-link">
-    <a href='/' target='_blank'>→ 打开网站前台</a>
+    <a href="index.html" target="_blank">→ 打开网站前台</a>
   </div>
 </div>
 
