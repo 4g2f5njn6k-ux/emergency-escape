@@ -305,6 +305,52 @@
       color: var(--text-muted); font-size: 0.8rem;
     }
     .admin-link a { color: var(--green-mid); text-decoration: none; }
+
+    /* Toast 提示 */
+    .toast-container {
+      position: fixed; top: 1rem; right: 1rem; z-index: 99999;
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .toast {
+      padding: 0.8rem 1.3rem; border-radius: 10px;
+      font-size: 0.85rem; font-family: var(--font-cn);
+      color: white; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      animation: toastIn 0.3s ease, toastOut 0.3s 2s ease forwards;
+      max-width: 360px; word-break: break-word;
+    }
+    .toast-success { background: var(--green-mid); }
+    .toast-error { background: #e74c3c; }
+    .toast-warn { background: #f97316; }
+    @keyframes toastIn { from { opacity:0; transform:translateX(30px); } to { opacity:1; transform:translateX(0); } }
+    @keyframes toastOut { from { opacity:1; } to { opacity:0; transform:translateY(-10px); } }
+
+    /* 发布结果弹窗 */
+    .deploy-result-overlay {
+      position: fixed; top:0;left:0;width:100%;height:100%;
+      background: rgba(0,0,0,0.4); z-index: 10001;
+      display: none; align-items: center; justify-content: center;
+    }
+    .deploy-result-overlay.active { display: flex; }
+    .deploy-result-dialog {
+      background: white; border-radius: var(--radius);
+      max-width: 500px; width: 90%; max-height: 70vh;
+      overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+    }
+    .deploy-result-header {
+      padding: 1rem 1.3rem; border-bottom: 1px solid rgba(58,107,76,0.08);
+    }
+    .deploy-result-header h3 { font-size: 1rem; margin: 0; color: var(--text); }
+    .deploy-result-body { padding: 1.3rem; font-size: 0.85rem; line-height: 1.7; }
+    .deploy-result-body .err-item {
+      padding: 0.4rem 0.6rem; background: #fef2f2;
+      border-radius: 6px; margin-bottom: 0.3rem;
+      color: #991b1b; font-size: 0.8rem;
+      font-family: monospace;
+    }
+    .deploy-result-footer {
+      padding: 0.8rem 1.3rem; border-top: 1px solid rgba(58,107,76,0.08);
+      text-align: right;
+    }
   </style>
 </head>
 <body>
@@ -330,6 +376,22 @@
     <div class="preview-body" id="previewBody"></div>
     <div class="preview-footer">
       <button class="btn" onclick="closePreview()">关闭预览</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast 提示容器 -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- 发布结果弹窗 -->
+<div class="deploy-result-overlay" id="deployResultOverlay" onclick="if(event.target===this)closeDeployResult()">
+  <div class="deploy-result-dialog">
+    <div class="deploy-result-header">
+      <h3 id="deployResultTitle">发布结果</h3>
+    </div>
+    <div class="deploy-result-body" id="deployResultBody"></div>
+    <div class="deploy-result-footer">
+      <button class="btn" onclick="closeDeployResult()">知道了</button>
     </div>
   </div>
 </div>
@@ -842,6 +904,7 @@
     document.getElementById('essayPhotoPreview').innerHTML = '';
     document.getElementById('essayCount').textContent = '0 / 500';
     refreshTabManage();
+    showToast('碎片已发布，<a href="index.html" target="_blank" style="color:white;text-decoration:underline;">点击预览</a> | 点右上角 🚀 发布上线 同步到线上');
   }
 
   function publishArticle() {
@@ -857,6 +920,7 @@
     document.getElementById('articleTitle').value = '';
     document.getElementById('articleBody').value = '';
     refreshTabManage();
+    showToast('文章已发布');
   }
 
   function publishPhoto() {
@@ -872,6 +936,7 @@
     document.getElementById('photoPreview').innerHTML = '';
     document.getElementById('photoCaption').value = '';
     refreshTabManage();
+    showToast('照片已添加到相册');
   }
 
   function publishGuide() {
@@ -887,6 +952,7 @@
     document.getElementById('guideTitle').value = '';
     document.getElementById('guideBody').value = '';
     refreshTabManage();
+    showToast('攻略已发布');
   }
 
   // ===== 删除（事件委托，不用内联 onclick） =====
@@ -1163,6 +1229,7 @@
     document.getElementById('shareCoverPreview').innerHTML = '';
     document.getElementById('shareFetchStatus').textContent = '';
     refreshTabManage();
+    showToast('音乐分享已发布');
   }
 
   // ========== 微博导入 ==========
@@ -1298,6 +1365,43 @@
     }
   };
 
+  // ===== Toast 通知 =====
+  function showToast(msg, type) {
+    type = type || 'success';
+    var container = document.getElementById('toastContainer');
+    var toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.textContent = msg;
+    container.appendChild(toast);
+    setTimeout(function() {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 2500);
+  }
+
+  // ===== 发布结果弹窗 =====
+  function showDeployResult(success, errors) {
+    var title = document.getElementById('deployResultTitle');
+    var body = document.getElementById('deployResultBody');
+    if (errors && errors.length > 0) {
+      title.textContent = '⚠️ ' + success + ' 个文件成功，' + errors.length + ' 个失败';
+      title.style.color = '#f97316';
+      var html = '<p style="margin-bottom:0.8rem;">以下文件推送失败：</p>';
+      errors.forEach(function(e) {
+        html += '<div class="err-item">' + escapeHtml(e) + '</div>';
+      });
+      body.innerHTML = html;
+    } else {
+      title.textContent = '✅ 发布成功！';
+      title.style.color = 'var(--green-mid)';
+      body.innerHTML = '<p>所有文件已推送到 GitHub。</p><p style="margin-top:0.5rem;color:var(--text-muted);">GitHub Actions 正在自动部署到 <strong>haloworld-me.netlify.app</strong>，约 1 分钟后生效。</p>';
+    }
+    document.getElementById('deployResultOverlay').classList.add('active');
+  }
+
+  function closeDeployResult() {
+    document.getElementById('deployResultOverlay').classList.remove('active');
+  }
+
   // ===== 发布上线：提交所有项目文件到 GitHub，Actions 自动部署到 Netlify =====
   var GH_TOKEN = ['ghp_bF2PX', 'rlZjI4YbU', 'HC1sDho7E8', 'FwbwU02CP', '3Cm'].join('');
   var GH_REPO = '4g2f5njn6k-ux/emergency-escape';
@@ -1305,14 +1409,16 @@
   // 需要同步到 GitHub 的项目文件列表
   var DEPLOY_FILES = [
     'index.html',
+    'admin.html',
     'css/style.css',
     'js/app.js',
     'js/data.js',
+    'js/player.js',
     'js/survey.js',
-    'js/weibo_import.js',
     'data/content.json',
+    'data/playlist.js',
     'data/questions.json',
-    'admin.html',
+    'data/weibo_import.js',
     'images/leaf-blossom.jpg'
   ];
 
@@ -1347,7 +1453,7 @@
   }
 
   function publishSite() {
-    if (!confirm('将本地所有项目文件同步到 GitHub？\n发布后约 1 分钟线上生效。')) return;
+    if (!confirm('将本地所有项目文件同步到 GitHub？\n发布后约 1 分钟在 haloworld-me.netlify.app 生效。')) return;
 
     var btn = document.querySelector('.admin-tab-publish');
     var origText = btn.textContent;
@@ -1364,23 +1470,25 @@
 
     function pushNext(index) {
       if (index >= total) {
-        // 全部完成
-        if (errors.length > 0) {
-          btn.textContent = '⚠️ ' + done + '/' + total + ' 成功，' + errors.length + ' 失败';
-        } else {
-          btn.textContent = '✅ 已发布！GitHub Actions 自动部署中...';
-        }
-        setTimeout(function() { btn.textContent = origText; btn.classList.remove('publishing'); }, 5000);
+        btn.textContent = origText;
+        btn.classList.remove('publishing');
+        showDeployResult(done, errors);
         return;
       }
 
       var path = DEPLOY_FILES[index];
       btn.textContent = '⏳ 发布中... (' + (done + 1) + '/' + total + ') ' + path;
 
-      // 特殊处理 content.json（用管理面板导出数据）
+      // 特殊处理 content.json（用管理面板导出数据，TextEncoder 做 UTF-8 base64）
       var contentPromise;
       if (path === 'data/content.json') {
-        contentPromise = Promise.resolve(btoa(unescape(encodeURIComponent(contentJson))));
+        var encoder = new TextEncoder();
+        var bytes = encoder.encode(contentJson);
+        var binary = '';
+        for (var bi = 0; bi < bytes.length; bi++) {
+          binary += String.fromCharCode(bytes[bi]);
+        }
+        contentPromise = Promise.resolve(btoa(binary));
       } else {
         contentPromise = readLocalFile(path);
       }
@@ -1392,7 +1500,7 @@
             content: b64Content,
             branch: 'main'
           };
-          if (sha) body.sha = sha; // 更新已有文件时需要 sha
+          if (sha) body.sha = sha;
 
           return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + path, {
             method: 'PUT',
@@ -1407,9 +1515,9 @@
         if (result.content || result.commit) {
           done++;
         } else {
-          errors.push(path + ': ' + JSON.stringify(result.message || result));
+          errors.push(path + ': ' + (result.message || JSON.stringify(result)));
         }
-        setTimeout(function() { pushNext(index + 1); }, 300); // 控制频率避免触发限制
+        setTimeout(function() { pushNext(index + 1); }, 300);
       }).catch(function(err) {
         errors.push(path + ': ' + err.message);
         setTimeout(function() { pushNext(index + 1); }, 300);
@@ -1435,7 +1543,12 @@
       if (!r.ok) throw new Error('加载失败: ' + r.status);
       return r.json();
     }).then(function(file) {
-      var surveys = JSON.parse(atob(file.content));
+      // 正确解码 UTF-8：atob 返回 Latin-1 二进制串，需还原为 Unicode
+      var binary = atob(file.content);
+      var bytes = new Uint8Array(binary.length);
+      for (var b = 0; b < binary.length; b++) { bytes[b] = binary.charCodeAt(b); }
+      var decoded = new TextDecoder('utf-8').decode(bytes);
+      var surveys = JSON.parse(decoded);
       if (!surveys || surveys.length === 0) {
         container.innerHTML = '<div class="manage-empty">还没有人填过问卷 📋</div>';
         btn.textContent = '🔄 刷新'; btn.disabled = false;
