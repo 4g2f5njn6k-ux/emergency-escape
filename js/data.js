@@ -25,8 +25,32 @@ function _notifyReady() {
   _dataCallbacks = [];
 }
 
-// 异步初始化：优先从 content.json 加载，失败则用 localStorage 兜底
+// 异步初始化：优先使用 localStorage（管理面板编辑后的最新数据），
+// content.json 仅作为初始种子（首次访问或 localStorage 被清空时使用）
 function initData() {
+  // 1. 先检查 localStorage 是否有数据（管理面板可能已经编辑过）
+  var cached = localStorage.getItem(STORAGE_KEY);
+  if (cached) {
+    try {
+      _siteData = JSON.parse(cached);
+      if (_siteData && ((_siteData.essays && _siteData.essays.length > 0) ||
+                        (_siteData.articles && _siteData.articles.length > 0) ||
+                        (_siteData.photos && _siteData.photos.length > 0))) {
+        // localStorage 有有效内容，直接使用
+        _notifyReady();
+        // 后台静默获取 content.json 作为兜底缓存（不覆盖已有数据）
+        fetch(DATA_URL + '?v=' + Date.now())
+          .then(function(res) { return res.ok ? res.json() : null; })
+          .then(function(json) {
+            if (json) localStorage.setItem(STORAGE_KEY + '_fallback', JSON.stringify(json));
+          })
+          .catch(function() {});
+        return;
+      }
+    } catch(e) {}
+  }
+
+  // 2. localStorage 为空，从 content.json 加载
   fetch(DATA_URL + '?v=' + Date.now())
     .then(function(res) {
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -34,16 +58,16 @@ function initData() {
     })
     .then(function(json) {
       _siteData = json;
-      // 同步更新 localStorage 作为本地缓存
+      // 同步到 localStorage 作为初始缓存
       localStorage.setItem(STORAGE_KEY, JSON.stringify(json));
       _notifyReady();
     })
     .catch(function(err) {
-      console.warn('content.json 加载失败，尝试本地缓存:', err.message);
-      // 兜底：读 localStorage
-      var cached = localStorage.getItem(STORAGE_KEY);
-      if (cached) {
-        try { _siteData = JSON.parse(cached); } catch(e) {}
+      console.warn('content.json 加载失败，尝试备用源:', err.message);
+      // 兜底：尝试 fallback 缓存
+      var fallback = localStorage.getItem(STORAGE_KEY + '_fallback');
+      if (fallback) {
+        try { _siteData = JSON.parse(fallback); } catch(e) {}
       }
       // 再兜底：内嵌微博数据
       if (!_siteData && typeof WEIBO_IMPORT !== 'undefined' && WEIBO_IMPORT.essays) {
@@ -55,6 +79,7 @@ function initData() {
           guestbook: [],
           musicshares: []
         };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(_siteData));
       }
       _notifyReady();
     });
