@@ -1264,13 +1264,6 @@
     }
   ],
   "guides": [],
-  "guestbook": [
-    {
-      "id": "gb1",
-      "name": "Nemo",
-      "text": "来串门啦！网站做得好看，墨绿色选得好~",
-      "date": "2026-07-08T17:30:00"
-    }
-  ],
+  "guestbook": [],
   "musicshares": []
 }
