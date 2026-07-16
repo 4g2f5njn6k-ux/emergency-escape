@@ -399,9 +399,7 @@ function renderAbout() {
   html += '<div class="about-name">Emergency Escape</div>';
   html += '<p style="color:var(--text-muted);margin-bottom:1.5rem;font-size:0.9rem;">又名「自留地」</p>';
   html += '<div class="about-bio">';
-  html += '<p>一个属于自己的角落。</p>';
-  html += '<p style="margin-top:0.8rem;">写点东西，放些照片，<br>记录走过的路和看过树。</p>';
-  html += '<p style="margin-top:0.8rem;">不赶时间，不追热点，<br>就像小时候躺在树下看光斑那样。</p>';
+  html += '<p style="line-height:2.2;">命运在新陈代谢<br>很深的东西变得很浅<br><br>直到剥落因果自然凋谢<br><br>让人彻夜难眠的豌豆埋进土里<br><br>一些沉重的记忆<br>最终变成轻盈的叶子</p>';
   html += '</div>';
   html += '<div class="about-links">';
   html += '<a href="#home" onclick="navigate(\'home\');return false">🏠 首页</a>';
