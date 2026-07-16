@@ -1822,9 +1822,49 @@
 
   function deleteMessage(msgId) {
     if (!confirm('确定删除这条留言吗？此操作不可撤销。')) return;
-    deleteItem('guestbook', msgId);  // data.js 里的函数，操作 localStorage
-    showToast('留言已删除，点右上角 🚀 发布上线 同步到线上');
-    loadGuestbook();
+
+    // 1. 先从 localStorage 删除（立即生效）
+    deleteItem('guestbook', msgId);
+
+    // 2. 同时直接通过 GitHub API 删除远端 content.json（双保险）
+    fetch('https://api.github.com/repos/' + GH_REPO + '/contents/data/content.json', {
+      headers: { 'Authorization': 'Bearer ' + GH_TOKEN }
+    }).then(function(r) {
+      if (!r.ok) throw new Error('读取 GitHub 失败');
+      return r.json();
+    }).then(function(file) {
+      var binary = atob(file.content);
+      var bytes = new Uint8Array(binary.length);
+      for (var b = 0; b < binary.length; b++) { bytes[b] = binary.charCodeAt(b); }
+      var data = JSON.parse(new TextDecoder('utf-8').decode(bytes));
+      data.guestbook = (data.guestbook || []).filter(function(m) { return m.id !== msgId; });
+
+      var newContent = JSON.stringify(data, null, 2);
+      var utf8 = new TextEncoder().encode(newContent);
+      var b64 = '';
+      for (var bi = 0; bi < utf8.length; bi++) b64 += String.fromCharCode(utf8[bi]);
+
+      return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/data/content.json', {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'Bearer ' + GH_TOKEN,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: 'admin: 删除留言 ' + msgId,
+          content: btoa(b64),
+          sha: file.sha
+        })
+      });
+    }).then(function(r) {
+      if (r && !r.ok) throw new Error('GitHub 写入失败');
+      showToast('留言已删除，已同步到线上');
+      loadGuestbook();
+    }).catch(function(err) {
+      console.error('GitHub 直接删除失败:', err);
+      showToast('留言已从本地删除（远端同步失败，请手动发布）', 'error');
+      loadGuestbook();
+    });
   }
 
   // 启动
