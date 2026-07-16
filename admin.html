@@ -1668,13 +1668,16 @@
         var s = surveys[i];
         html += '<div style="background:white;border:1px solid rgba(58,107,76,0.1);border-radius:10px;padding:1.2rem;margin-bottom:0.8rem;">';
 
-        // 头部：名字 + 时间
+        // 头部：名字 + 时间 + 删除按钮
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.8rem;">';
         html += '<div style="display:flex;align-items:center;gap:0.5rem;">';
         html += '<span style="display:inline-block;width:32px;height:32px;border-radius:50%;background:var(--green-wash);text-align:center;line-height:32px;font-size:0.85rem;">' + escapeHtml(s.name.charAt(0)) + '</span>';
         html += '<strong style="color:var(--green-deep);">' + escapeHtml(s.name) + '</strong>';
         html += '</div>';
+        html += '<div style="display:flex;align-items:center;gap:0.5rem;">';
         html += '<span style="font-size:0.75rem;color:var(--text-muted);">' + fullDate(s.date) + '</span>';
+        html += '<button onclick="deleteSurvey(' + i + ')" style="background:#fff0f0;border:1px solid #fcc;color:#c0392b;padding:0.3rem 0.7rem;border-radius:6px;cursor:pointer;font-size:0.8rem;">删除</button>';
+        html += '</div>';
         html += '</div>';
 
         // 答案列表
@@ -1713,6 +1716,41 @@
       container.innerHTML = '<div class="manage-empty" style="color:#c0392b;">加载失败：' + err.message + '<br><small>请检查网络或 GitHub Token</small></div>';
       btn.textContent = '🔄 重试';
       btn.disabled = false;
+    });
+  }
+
+  function deleteSurvey(idx) {
+    if (!confirm('确定删除这份问卷吗？此操作不可撤销。')) return;
+
+    fetch('https://api.github.com/repos/' + GH_REPO + '/contents/surveys/index.json', {
+      headers: { 'Authorization': 'Bearer ' + GH_TOKEN }
+    }).then(function(r) {
+      if (!r.ok) throw new Error('读取问卷失败: ' + r.status);
+      return r.json();
+    }).then(function(file) {
+      var binary = atob(file.content);
+      var bytes = new Uint8Array(binary.length);
+      for (var b = 0; b < binary.length; b++) { bytes[b] = binary.charCodeAt(b); }
+      var decoded = new TextDecoder('utf-8').decode(bytes);
+      var surveys = JSON.parse(decoded);
+      if (idx < 0 || idx >= surveys.length) throw new Error('索引越界');
+      surveys.splice(idx, 1);
+      var newContent = JSON.stringify(surveys, null, 2);
+      var encoder = new TextEncoder();
+      var utf8 = encoder.encode(newContent);
+      var binary2 = '';
+      for (var bi = 0; bi < utf8.length; bi++) binary2 += String.fromCharCode(utf8[bi]);
+      return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/surveys/index.json', {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + GH_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'admin: 删除问卷 #' + (idx + 1), content: btoa(binary2), sha: file.sha })
+      });
+    }).then(function(r) {
+      if (!r.ok) throw new Error('删除失败: ' + r.status);
+      showToast('问卷已删除');
+      loadSurveys();
+    }).catch(function(err) {
+      showToast('操作失败：' + err.message, 'error');
     });
   }
 
@@ -1805,6 +1843,10 @@
       data.guestbook = (data.guestbook || []).filter(function(m) { return m.id !== msgId; });
 
       var newContent = JSON.stringify(data, null, 2);
+      var encoder = new TextEncoder();
+      var utf8 = encoder.encode(newContent);
+      var binary = '';
+      for (var bi = 0; bi < utf8.length; bi++) binary += String.fromCharCode(utf8[bi]);
       return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/data/content.json', {
         method: 'PUT',
         headers: {
@@ -1813,7 +1855,7 @@
         },
         body: JSON.stringify({
           message: 'admin: 删除留言 ' + msgId,
-          content: btoa(unescape(encodeURIComponent(newContent))),
+          content: btoa(binary),
           sha: file.sha
         })
       });
