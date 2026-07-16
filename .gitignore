@@ -4,6 +4,11 @@ scripts/
 test-photo.html
 data/weibo_import.js
 data/weibo_raw.json
+data/weibo_raw_full.json
 data/playlist.json
 netlify.toml
 netlify/functions/publish.js
+scrape_all_weibo.py
+scrape_weibo.py
+download_photos.py
+integrate_weibo.py
