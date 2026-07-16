@@ -6,6 +6,8 @@
 
 const DATA_URL = 'data/content.json';
 const STORAGE_KEY = 'emergency_escape_data';
+const STORAGE_VERSION_KEY = 'emergency_escape_data_version';
+const DATA_VERSION = '20260716'; // 更新内容后递增此版本号，强制刷新所有访客的缓存
 const PINNED_SONG_KEY = 'ee_pinned_song';
 
 // 内存缓存
@@ -29,6 +31,12 @@ function _notifyReady() {
 // content.json 仅作为初始种子（首次访问或 localStorage 被清空时使用）
 function initData() {
   // 1. 先检查 localStorage 是否有数据（管理面板可能已经编辑过）
+  //    同时检查版本号，版本不匹配则清除旧缓存
+  var cachedVersion = localStorage.getItem(STORAGE_VERSION_KEY);
+  if (cachedVersion !== DATA_VERSION) {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.setItem(STORAGE_VERSION_KEY, DATA_VERSION);
+  }
   var cached = localStorage.getItem(STORAGE_KEY);
   if (cached) {
     try {
@@ -38,11 +46,20 @@ function initData() {
                         (_siteData.photos && _siteData.photos.length > 0))) {
         // localStorage 有有效内容，直接使用
         _notifyReady();
-        // 后台静默获取 content.json 作为兜底缓存（不覆盖已有数据）
+        // 后台静默获取 content.json，如果远端数据更多则自动更新
         fetch(DATA_URL + '?v=' + Date.now())
           .then(function(res) { return res.ok ? res.json() : null; })
           .then(function(json) {
-            if (json) localStorage.setItem(STORAGE_KEY + '_fallback', JSON.stringify(json));
+            if (json) {
+              localStorage.setItem(STORAGE_KEY + '_fallback', JSON.stringify(json));
+              // 如果远端数据条数更多，自动更新本地缓存并刷新
+              var remoteCount = (json.essays||[]).length + (json.photos||[]).length + (json.articles||[]).length;
+              var localCount = (_siteData.essays||[]).length + (_siteData.photos||[]).length + (_siteData.articles||[]).length;
+              if (remoteCount > localCount) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(json));
+                location.reload();
+              }
+            }
           })
           .catch(function() {});
         return;
