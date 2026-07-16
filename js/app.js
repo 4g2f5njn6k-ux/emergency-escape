@@ -292,6 +292,7 @@ async function viewArticle(id) {
   html += '</div>';
   html += '</div>';
 
+  currentPage = 'article-detail'; // 标记为文章详情页，使"返回文章列表"按钮正常工作
   main.innerHTML = html;
   afterNavigate();
   window.scrollTo({ top: 0, behavior: 'instant' });
@@ -386,6 +387,7 @@ async function viewGuide(id) {
     await sleep(200);
   }
 
+  currentPage = 'guide-detail'; // 标记为攻略详情页
   main.innerHTML = '<div class="page-section">' + renderGuides(data.guides) + '</div>';
   afterNavigate();
   window.scrollTo({ top: 0, behavior: 'instant' });

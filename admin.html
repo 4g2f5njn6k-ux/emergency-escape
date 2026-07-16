@@ -494,6 +494,7 @@
   <div class="admin-header">
     <h1>Emergency Escape</h1>
     <div class="header-right">
+      <a href="index.html" target="_blank" class="btn-ghost" style="text-decoration:none;">🏠 进入主站</a>
       <button class="btn-ghost" onclick="changePwd()">改密码</button>
       <button class="btn-ghost" onclick="logout()">退出</button>
     </div>
@@ -509,6 +510,7 @@
     <button class="admin-tab" data-tab="musicshare" onclick="switchTab('musicshare')">🎧 分享音乐</button>
     <button class="admin-tab" data-tab="weiboimport" onclick="switchTab('weiboimport')">📥 导入微博</button>
     <button class="admin-tab" data-tab="survey" onclick="switchTab('survey')">📋 问卷</button>
+    <button class="admin-tab" data-tab="guestbook" onclick="switchTab('guestbook')">💬 留言管理</button>
     <button class="admin-tab admin-tab-publish" onclick="publishSite()" title="将当前所有内容发布到线上，所有访客都能看到">🚀 发布上线</button>
   </div>
 
@@ -707,9 +709,19 @@
     </div>
   </div>
 
-  <div class="admin-link">
-    <a href='/' target='_blank'>→ 打开网站前台</a>
+  <div class="post-card" id="tab-guestbook" style="display:none;">
+    <div class="post-label">💬 留言管理</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <p style="font-size:0.8rem;color:var(--text-muted);margin:0;">
+        访客在主站留言板提交的留言。
+      </p>
+      <button class="btn-icon" onclick="loadGuestbook()" id="guestbookRefreshBtn">🔄 刷新</button>
+    </div>
+    <div id="guestbookList" style="max-height:70vh;overflow-y:auto;">
+      <div class="manage-empty" id="guestbookLoading">加载中...</div>
+    </div>
   </div>
+
 </div>
 
 <script src="data/weibo_import.js"></script>
@@ -1712,6 +1724,107 @@
       loadSurveys();
     }
   };
+
+  // 切到留言标签时自动加载
+  var origSwitchTab4 = switchTab;
+  switchTab = function(tab) {
+    origSwitchTab4(tab);
+    if (tab === 'guestbook') {
+      loadGuestbook();
+    }
+  };
+
+  function loadGuestbook() {
+    var container = document.getElementById('guestbookList');
+    container.innerHTML = '<div class="manage-empty">加载中...</div>';
+    var btn = document.getElementById('guestbookRefreshBtn');
+    btn.textContent = '⏳ 加载中...';
+    btn.disabled = true;
+
+    fetch('https://api.github.com/repos/' + GH_REPO + '/contents/data/content.json', {
+      headers: { 'Authorization': 'Bearer ' + GH_TOKEN }
+    }).then(function(r) {
+      if (!r.ok) throw new Error('加载失败: ' + r.status);
+      return r.json();
+    }).then(function(file) {
+      var binary = atob(file.content);
+      var bytes = new Uint8Array(binary.length);
+      for (var b = 0; b < binary.length; b++) { bytes[b] = binary.charCodeAt(b); }
+      var decoded = new TextDecoder('utf-8').decode(bytes);
+      var data = JSON.parse(decoded);
+      var messages = data.guestbook || [];
+
+      if (messages.length === 0) {
+        container.innerHTML = '<div class="manage-empty">还没有留言 💬</div>';
+        btn.textContent = '🔄 刷新'; btn.disabled = false;
+        return;
+      }
+
+      // 按时间倒序
+      messages.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+
+      var html = '';
+      for (var i = 0; i < messages.length; i++) {
+        var m = messages[i];
+        html += '<div class="guestbook-item" id="gb-' + m.id + '" style="background:white;border:1px solid rgba(58,107,76,0.1);border-radius:10px;padding:1.2rem;margin-bottom:0.8rem;">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">';
+        html += '<div>';
+        html += '<strong style="color:var(--green-deep);">' + escapeHtml(m.name || '匿名') + '</strong>';
+        html += '<span style="font-size:0.75rem;color:var(--text-muted);margin-left:0.8rem;">' + fullDate(m.date) + '</span>';
+        html += '</div>';
+        html += '<button onclick="deleteMessage(\'' + m.id + '\')" style="background:#fff0f0;border:1px solid #fcc;color:#c0392b;padding:0.3rem 0.7rem;border-radius:6px;cursor:pointer;font-size:0.8rem;">删除</button>';
+        html += '</div>';
+        html += '<div style="font-size:0.9rem;color:var(--text);line-height:1.6;">' + escapeHtml(m.text || '') + '</div>';
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
+      btn.textContent = '🔄 刷新';
+      btn.disabled = false;
+    }).catch(function(err) {
+      container.innerHTML = '<div class="manage-empty" style="color:#c0392b;">加载失败：' + err.message + '<br><small>请检查网络或 GitHub Token</small></div>';
+      btn.textContent = '🔄 重试';
+      btn.disabled = false;
+    });
+  }
+
+  function deleteMessage(msgId) {
+    if (!confirm('确定删除这条留言吗？此操作不可撤销。')) return;
+
+    fetch('https://api.github.com/repos/' + GH_REPO + '/contents/data/content.json', {
+      headers: { 'Authorization': 'Bearer ' + GH_TOKEN }
+    }).then(function(r) {
+      if (!r.ok) throw new Error('读取失败');
+      return r.json();
+    }).then(function(file) {
+      var binary = atob(file.content);
+      var bytes = new Uint8Array(binary.length);
+      for (var b = 0; b < binary.length; b++) { bytes[b] = binary.charCodeAt(b); }
+      var decoded = new TextDecoder('utf-8').decode(bytes);
+      var data = JSON.parse(decoded);
+      data.guestbook = (data.guestbook || []).filter(function(m) { return m.id !== msgId; });
+
+      var newContent = JSON.stringify(data, null, 2);
+      return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/data/content.json', {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'Bearer ' + GH_TOKEN,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: 'admin: 删除留言 ' + msgId,
+          content: btoa(unescape(encodeURIComponent(newContent))),
+          sha: file.sha
+        })
+      });
+    }).then(function(r) {
+      if (!r.ok) throw new Error('删除失败');
+      showToast('留言已删除');
+      loadGuestbook();
+    }).catch(function(err) {
+      showToast('操作失败：' + err.message, 'error');
+    });
+  }
 
   // 启动
   initLogin();
