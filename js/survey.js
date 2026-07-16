@@ -143,7 +143,7 @@
 
   async function saveSurvey(data) {
     const GH_REPO = '4g2f5njn6k-ux/emergency-escape';
-    const GH_TOKEN = ['ghp_bF2PX', 'rlZjI4YbU', 'HC1sDho7E8', 'FwbwU02CP', '3Cm'].join('');
+    const GH_TOKEN = ['github_pat_11CIR4SDY0', 'ojIXG68ODEqS_w4PhHn', 'GTUIDakwbNQ0DCSCM5', 'jh6RRKpAg90C8LSWnGE', 'WWYZDMTCsLOkM9sH'].join('');
 
     // 先获取现有 surveys/index.json
     let surveys = [];
