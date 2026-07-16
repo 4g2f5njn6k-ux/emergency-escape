@@ -12,3 +12,10 @@ scrape_all_weibo.py
 scrape_weibo.py
 download_photos.py
 integrate_weibo.py
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
