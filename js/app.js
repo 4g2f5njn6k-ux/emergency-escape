@@ -763,9 +763,74 @@ function drawQuote() {
 
 // ===== 左侧小动物探头 =====
 (function initAnimalPeekers() {
-  // 纯 hover 交互：CSS 已完全控制探头/缩头动画
-  // 此 IIFE 仅用于初始化检测，不需要任何点击事件
   var animals = document.querySelectorAll('.peek-animal');
   if (!animals.length) return;
-  // 无操作 - 所有交互由 CSS :hover 处理
+
+  var speeches = [
+    '你干嘛！',
+    '可恶…被抓住了 (́•̀ᴗ•̀)',
+    '嘿嘿~ (´∀`)',
+    '不要碰我啦 (╥﹏╥)',
+    '呜…被发现了',
+    '你好呀~ (◕ᴗ◕✿)',
+    '别看了别看了 (///▽///)',
+    '哼！ (￣^￣)ゞ',
+    '呀！被发现啦 Σ(っ°Д°;)っ',
+    '在偷看什么呢~ (¬‿¬)',
+    '再碰一下试试 (ง •̀_•́)ง',
+    '今天也要开心哦 ♪(´▽｀)',
+    '嘘…我躲一下 (｡•́︿•̀｡)',
+    '碰到我啦！ (＞﹏＜)',
+    '你好你好~ (｡♥‿♥｡)',
+    '啊！是你！ ∗ˊωˋ∗)',
+    '偷偷探头中… (￣▽￣)',
+    '被抓住了呢 (꒪⌓꒪)',
+    '嘿嘿，抓不到我~ ╮(╯▽╰)╭',
+    '诶嘿 (^-^*)',
+    '别戳了别戳了 (汗)',
+    '在看什么呀 (◉ω◉)?',
+    '今天天气不错呢 ☀(´▽｀)',
+    '咕噜咕噜~ ( ´ ▽ ` )',
+    '被发现了…好羞 (⁄ ⁄•⁄ω⁄•⁄ ⁄)',
+    '嗨~ (*≧▽≦)',
+  ];
+
+  var lastSpeechIdx = -1;
+
+  animals.forEach(function(animal) {
+    animal.addEventListener('mouseenter', function() {
+      // 75% 概率说话
+      if (Math.random() < 0.75) {
+        var idx;
+        do {
+          idx = Math.floor(Math.random() * speeches.length);
+        } while (idx === lastSpeechIdx && speeches.length > 1);
+        lastSpeechIdx = idx;
+        showSpeech(animal, speeches[idx]);
+      }
+    });
+  });
+
+  function showSpeech(animal, text) {
+    // 移除已有气泡
+    var existing = animal.querySelector('.peek-speech');
+    if (existing) existing.remove();
+
+    var bubble = document.createElement('div');
+    bubble.className = 'peek-speech';
+    bubble.textContent = text;
+    animal.appendChild(bubble);
+
+    // 强制回流后显示
+    void bubble.offsetHeight;
+    bubble.classList.add('show');
+
+    // 1.6s 后隐藏
+    setTimeout(function() {
+      bubble.classList.remove('show');
+      setTimeout(function() {
+        if (bubble.parentNode) bubble.remove();
+      }, 300);
+    }, 1600);
+  }
 })();

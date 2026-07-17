@@ -1517,7 +1517,7 @@ body::after {
 
 /* 固定热区 — 不移动，仅作为 hover 触发器 */
 .peek-animal {
-  width: 50px;            /* 可见区域宽度 */
+  width: 64px;            /* 与图片等宽，100%可见 */
   height: 64px;
   position: relative;
   cursor: pointer;
@@ -1535,7 +1535,7 @@ body::after {
 /* 图片绝对定位，可自由滑动而不影响热区 */
 .peek-animal img {
   position: absolute;
-  left: -15px;            /* 图片左移15px，部分在屏幕外 */
+  left: 0;                /* 完全在屏幕内 */
   top: 0;
   width: 64px;
   height: 64px;
@@ -1547,7 +1547,54 @@ body::after {
 
 /* hover → 图片向左滑出（隐藏） */
 .peek-animal:hover img {
-  transform: translateX(-58px);
+  transform: translateX(-70px);
+}
+
+/* 说话气泡 */
+.peek-speech {
+  position: absolute;
+  left: 72px;
+  top: 50%;
+  transform: translateY(-50%) translateX(-6px);
+  background: var(--paper-warm);
+  border: 1.5px solid var(--green-soft);
+  border-radius: 12px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  color: var(--green-deep);
+  box-shadow: 0 2px 12px rgba(45, 90, 63, 0.12);
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  z-index: 410;
+  font-weight: 500;
+}
+
+.peek-speech.show {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* 气泡小尖角 */
+.peek-speech::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-right-color: var(--green-soft);
+}
+
+.peek-speech::after {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+  border-right-color: var(--paper-warm);
 }
 
 /* 移动端隐藏（避免遮挡导航） */
