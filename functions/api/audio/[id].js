@@ -1,39 +1,82 @@
-/**
- * Cloudflare Pages Function — 音频代理
- * 解决网易云外层 URL 重定向到 HTTP（HTTPS 页面被浏览器拦截）的问题
- *
- * 用法: /api/audio/1908049566
- * 行为: 获取网易云重定向目标，升级 HTTP→HTTPS，302 跳转
- */
-export async function onRequest(context) {
-  const { params } = context;
-  const songId = params.id;
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <title>Emergency Escape · 自留地</title>
+  <link rel="stylesheet" href="css/style.css?v=1784278471">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+</head>
+<body>
 
-  if (!songId || !/^\d+$/.test(songId)) {
-    return new Response('Invalid song ID', { status: 400 });
-  }
+  <!-- 加载动画 -->
+  <div class="loader-overlay" id="loader">
+    <picture>
+      <source srcset="images/still-feeling.webp?v=1" type="image/webp">
+      <img src="images/still-feeling.jpg?v=1" class="loader-leaf" alt="🌿">
+    </picture>
+    <span class="loader-text">STILL FEELING</span>
+  </div>
 
-  const outerUrl = 'https://music.163.com/song/media/outer/url?id=' + songId + '.mp3';
+  <!-- 顶部导航 -->
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="#home" class="brand" onclick="navigate('home')">
+        <span class="brand-en">Emergency Escape</span>
+        <span class="brand-cn">自 留 地</span>
+      </a>
+      <button class="mobile-nav-toggle" onclick="toggleMobileNav()">☰</button>
+      <nav class="nav-links" id="mobileNav">
+        <a href="#home" onclick="navigate('home')">首页</a>
+        <a href="#essays" onclick="navigate('essays')">随笔</a>
+        <a href="#articles" onclick="navigate('articles')">文章</a>
+        <a href="#photos" onclick="navigate('photos')">相册</a>
+        <a href="#guides" onclick="navigate('guides')">攻略</a>
+        <a href="#about" onclick="navigate('about')">关于</a>
+        <a href="#guestbook" onclick="navigate('guestbook')">留言</a>
+        <a href="#fun" onclick="navigate('fun')">🎲</a>
+        <a href="#musicshares" onclick="navigate('musicshares')">🎧</a>
+      </nav>
+    </div>
+  </header>
 
-  try {
-    // 只取 HEAD，拿到重定向目标即可，不下载音频数据
-    const resp = await fetch(outerUrl, {
-      method: 'HEAD',
-      redirect: 'manual',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; EmergencyEscape/1.0)',
-        'Referer': 'https://music.163.com/'
-      }
-    });
+  <!-- 主内容区 -->
+  <main class="main-content" id="mainContent">
+    <!-- 各页面通过JS动态渲染 -->
+  </main>
 
-    let targetUrl = resp.headers.get('location') || outerUrl;
+  <!-- 页脚 -->
+  <footer class="site-footer">
+    <a class='footer-leaf' href='/admin' title='管理'>🌿</a>
+    <p>Emergency Escape · 自留地 &copy; 2026</p>
+    <p style="margin-top:0.2rem;font-size:0.7rem;">Build with love & sunlight</p>
+  </footer>
+  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <img src="" alt="" id="lightboxImg">
+  </div>
 
-    // 强制升级到 HTTPS —— 网易云 CDN 同时支持 HTTP/HTTPS
-    targetUrl = targetUrl.replace(/^http:\/\//, 'https://');
+  <!-- 左侧小动物探头 -->
+  <div class="animal-peekers" id="animalPeekers">
+    <div class="peek-animal" style="--i: 0" title="喵~"><img src="images/peek-1.png" alt=""></div>
+    <div class="peek-animal" style="--i: 1" title="汪~"><img src="images/peek-2.png" alt=""></div>
+    <div class="peek-animal" style="--i: 2" title="咕~"><img src="images/peek-3.png" alt=""></div>
+    <div class="peek-animal" style="--i: 3" title="嗷~"><img src="images/peek-4.png" alt=""></div>
+    <div class="peek-animal" style="--i: 4" title="嗯~"><img src="images/peek-5.png" alt=""></div>
+    <div class="peek-animal" style="--i: 5" title="呱~"><img src="images/peek-6.png" alt=""></div>
+    <div class="peek-animal" style="--i: 6" title="叽~"><img src="images/peek-7.png" alt=""></div>
+    <div class="peek-animal" style="--i: 7" title="呼~"><img src="images/peek-8.png" alt=""></div>
+  </div>
 
-    return Response.redirect(targetUrl, 302);
-  } catch (e) {
-    // 回退：直接走 HTTPS 外层 URL（可能被拦截，但至少不报错）
-    return Response.redirect(outerUrl, 302);
-  }
-}
+  <!-- 返回顶部 -->
+  <button class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+  <script src="data/weibo_import.js?v=1784278471"></script>
+  <script src="js/data.js?v=1784278471"></script>
+  <script src="js/app.js?v=1784278471"></script>
+  <script src="data/playlist.js?v=1784278471"></script>
+  <script src="data/pinned-song.js?v=1784278471"></script>
+  <script src="js/player.js?v=1784278471"></script>
+  <script src="js/survey.js?v=1784278471"></script>
+</body>
+</html>
