@@ -85,7 +85,7 @@ body::after {
 }
 
 .header-inner {
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -151,7 +151,7 @@ body::after {
 
 /* ===== 主内容区 ===== */
 .main-content {
-  max-width: 720px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 3rem 1.5rem 5rem;
   min-height: calc(100vh - 180px);
@@ -293,7 +293,7 @@ body::after {
 
 /* ===== 文章页 ===== */
 .article-full {
-  max-width: 680px;
+  max-width: 820px;
   margin: 0 auto;
 }
 
@@ -1510,64 +1510,48 @@ body::after {
   z-index: 400;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
   pointer-events: none;
 }
 
 .peek-animal {
-  width: 50px;
-  height: 42px;
-  background: var(--green-pale);
-  border: 1.5px solid var(--green-soft);
-  border-left: none;
-  border-radius: 0 21px 21px 0;
+  width: 70px;
+  height: 60px;
+  border-radius: 0 30px 30px 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-  line-height: 1;
   cursor: pointer;
-  transform: translateX(-14px);
-  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 0.35s ease;
-  box-shadow: 3px 1px 10px rgba(45, 90, 63, 0.10);
+  transform: translateX(-6px);
+  transition: transform 0.2s ease;
   pointer-events: auto;
   user-select: none;
   opacity: 0;
-  animation: peekIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: peekIn 0.3s ease forwards;
   animation-delay: calc(var(--i, 0) * 0.08s + 1.6s);
 }
 
+.peek-animal img {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(2px 2px 4px rgba(45, 90, 63, 0.08));
+}
+
 .peek-animal:hover {
-  transform: translateX(-46px);
-  box-shadow: 1px 1px 4px rgba(45, 90, 63, 0.04);
-}
-
-.peek-animal:active {
-  transform: translateX(-46px) scale(0.90);
-  transition: transform 0.12s ease;
-}
-
-.peek-animal.wiggle {
-  animation: animalWiggle 0.45s ease !important;
+  transform: translateX(-72px);
 }
 
 @keyframes peekIn {
   from {
     opacity: 0;
-    transform: translateX(-52px);
+    transform: translateX(-78px);
   }
   to {
     opacity: 1;
-    transform: translateX(-14px);
+    transform: translateX(-6px);
   }
-}
-
-@keyframes animalWiggle {
-  0%, 100% { transform: translateX(-14px) rotate(0deg); }
-  20%  { transform: translateX(-6px) rotate(-6deg); }
-  50%  { transform: translateX(-22px) rotate(4deg); }
-  80%  { transform: translateX(-10px) rotate(-3deg); }
 }
 
 /* 移动端隐藏（避免遮挡导航） */

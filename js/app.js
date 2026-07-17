@@ -763,30 +763,9 @@ function drawQuote() {
 
 // ===== 左侧小动物探头 =====
 (function initAnimalPeekers() {
+  // 纯 hover 交互：CSS 已完全控制探头/缩头动画
+  // 此 IIFE 仅用于初始化检测，不需要任何点击事件
   var animals = document.querySelectorAll('.peek-animal');
   if (!animals.length) return;
-
-  animals.forEach(function(animal) {
-    // 点击摇摆
-    animal.addEventListener('click', function() {
-      this.classList.remove('wiggle');
-      void this.offsetWidth;
-      this.classList.add('wiggle');
-      setTimeout(function() {
-        animal.classList.remove('wiggle');
-      }, 500);
-    });
-
-    // 随机小动作：偶尔自己动一下
-    setInterval(function() {
-      if (Math.random() < 0.02) {
-        animal.classList.remove('wiggle');
-        void animal.offsetWidth;
-        animal.classList.add('wiggle');
-        setTimeout(function() {
-          animal.classList.remove('wiggle');
-        }, 500);
-      }
-    }, 8000);
-  });
+  // 无操作 - 所有交互由 CSS :hover 处理
 })();
