@@ -397,7 +397,7 @@ async function viewGuide(id) {
 function renderAbout() {
   let html = '';
   html += '<div class="about-section">';
-  html += '<div class="about-avatar"><img src="images/leaf-blossom.jpg" alt="🌿"></div>';
+  html += '<div class="about-avatar"><img src="images/still-feeling.jpg" alt="🌿"></div>';
   html += '<div class="about-name">Emergency Escape</div>';
   html += '<p style="color:var(--text-muted);margin-bottom:1.5rem;font-size:0.9rem;">又名「自留地」</p>';
   html += '<div class="about-bio">';
