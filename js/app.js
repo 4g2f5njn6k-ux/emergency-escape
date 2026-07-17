@@ -760,3 +760,33 @@ function drawQuote() {
     setTimeout(() => display.classList.remove('quote-fade-in'), 600);
   }, 300);
 }
+
+// ===== 左侧小动物探头 =====
+(function initAnimalPeekers() {
+  var animals = document.querySelectorAll('.peek-animal');
+  if (!animals.length) return;
+
+  animals.forEach(function(animal) {
+    // 点击摇摆
+    animal.addEventListener('click', function() {
+      this.classList.remove('wiggle');
+      void this.offsetWidth;
+      this.classList.add('wiggle');
+      setTimeout(function() {
+        animal.classList.remove('wiggle');
+      }, 500);
+    });
+
+    // 随机小动作：偶尔自己动一下
+    setInterval(function() {
+      if (Math.random() < 0.02) {
+        animal.classList.remove('wiggle');
+        void animal.offsetWidth;
+        animal.classList.add('wiggle');
+        setTimeout(function() {
+          animal.classList.remove('wiggle');
+        }, 500);
+      }
+    }, 8000);
+  });
+})();

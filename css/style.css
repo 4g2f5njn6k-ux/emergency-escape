@@ -1497,3 +1497,80 @@ body::after {
   50% { transform: translateX(6px); }
   75% { transform: translateX(-4px); }
 }
+
+/* ========================================
+   左侧小动物探头 Peek-a-Boo
+   ======================================== */
+
+.animal-peekers {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.peek-animal {
+  width: 50px;
+  height: 42px;
+  background: var(--green-pale);
+  border: 1.5px solid var(--green-soft);
+  border-left: none;
+  border-radius: 0 21px 21px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transform: translateX(-14px);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.35s ease;
+  box-shadow: 3px 1px 10px rgba(45, 90, 63, 0.10);
+  pointer-events: auto;
+  user-select: none;
+  opacity: 0;
+  animation: peekIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 0.08s + 1.6s);
+}
+
+.peek-animal:hover {
+  transform: translateX(-46px);
+  box-shadow: 1px 1px 4px rgba(45, 90, 63, 0.04);
+}
+
+.peek-animal:active {
+  transform: translateX(-46px) scale(0.90);
+  transition: transform 0.12s ease;
+}
+
+.peek-animal.wiggle {
+  animation: animalWiggle 0.45s ease !important;
+}
+
+@keyframes peekIn {
+  from {
+    opacity: 0;
+    transform: translateX(-52px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-14px);
+  }
+}
+
+@keyframes animalWiggle {
+  0%, 100% { transform: translateX(-14px) rotate(0deg); }
+  20%  { transform: translateX(-6px) rotate(-6deg); }
+  50%  { transform: translateX(-22px) rotate(4deg); }
+  80%  { transform: translateX(-10px) rotate(-3deg); }
+}
+
+/* 移动端隐藏（避免遮挡导航） */
+@media (max-width: 768px) {
+  .animal-peekers { display: none; }
+}
