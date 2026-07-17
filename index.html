@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="referrer" content="no-referrer">
   <title>Emergency Escape · 自留地</title>
-  <link rel="stylesheet" href="css/style.css?v=1784295705">
+  <link rel="stylesheet" href="css/style.css?v=1784296555">
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -71,12 +71,28 @@
   <!-- 返回顶部 -->
   <button class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 
-  <script src="data/weibo_import.js?v=1784295705"></script>
-  <script src="js/data.js?v=1784295705"></script>
-  <script src="js/app.js?v=1784295705"></script>
-  <script src="data/playlist.js?v=1784295705"></script>
-  <script src="data/pinned-song.js?v=1784295705"></script>
-  <script src="js/player.js?v=1784295705"></script>
-  <script src="js/survey.js?v=1784295705"></script>
+  <!-- 右下角 Halo 小猫 -->
+  <div class="cat-halo" id="catHalo">
+    <div class="cat-bubble" id="catBubble">
+      <div class="cat-bubble-scroll" id="catBubbleScroll">
+        <div class="cat-msg cat-msg-halo" id="catWelcome">宝子～你来啦？想跟我说啥 (´∀`)</div>
+      </div>
+      <div class="cat-bubble-input">
+        <input type="text" id="catInput" placeholder="跟小猫说句话…" onkeydown="if(event.key==='Enter')catSend()" />
+        <button onclick="catSend()">发送</button>
+      </div>
+    </div>
+    <div class="cat-img-wrap" id="catImgWrap" onclick="toggleCatBubble()">
+      <img src="images/cat-halo.png" alt="Halo猫" />
+    </div>
+  </div>
+
+  <script src="data/weibo_import.js?v=1784296555"></script>
+  <script src="js/data.js?v=1784296555"></script>
+  <script src="js/app.js?v=1784296555"></script>
+  <script src="data/playlist.js?v=1784296555"></script>
+  <script src="data/pinned-song.js?v=1784296555"></script>
+  <script src="js/player.js?v=1784296555"></script>
+  <script src="js/survey.js?v=1784296555"></script>
 </body>
 </html>

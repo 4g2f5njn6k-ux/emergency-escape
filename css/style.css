@@ -1597,6 +1597,205 @@ body::after {
   border-right-color: var(--paper-warm);
 }
 
+/* ========================================
+   右下角 Halo 小猫 — 动态 + 对话
+   ======================================== */
+
+.cat-halo {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* 小猫图片容器 */
+.cat-img-wrap {
+  width: 90px;
+  height: 90px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: catFloat 3s ease-in-out infinite;
+  filter: drop-shadow(0 4px 12px rgba(45, 90, 63, 0.15));
+}
+
+.cat-img-wrap:hover {
+  transform: scale(1.15) rotate(-5deg);
+  animation-play-state: paused;
+}
+
+.cat-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* 浮动呼吸动画 */
+@keyframes catFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* 气泡对话框 */
+.cat-bubble {
+  position: relative;
+  background: var(--paper-warm);
+  border: 1.5px solid var(--green-soft);
+  border-radius: 16px 16px 4px 16px;
+  padding: 12px 14px;
+  width: 260px;
+  box-shadow: 0 4px 24px rgba(45, 90, 63, 0.15);
+  opacity: 0;
+  transform: translateY(10px) scale(0.95);
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  margin-bottom: 4px;
+}
+
+.cat-bubble.open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+/* 气泡尖角（指向小猫） */
+.cat-bubble::after {
+  content: '';
+  position: absolute;
+  right: 24px;
+  bottom: -10px;
+  border: 8px solid transparent;
+  border-top-color: var(--paper-warm);
+  border-right: 0;
+  border-left: 12px solid transparent;
+}
+
+.cat-bubble::before {
+  content: '';
+  position: absolute;
+  right: 22px;
+  bottom: -13px;
+  border: 9px solid transparent;
+  border-top-color: var(--green-soft);
+  border-right: 0;
+  border-left: 14px solid transparent;
+}
+
+/* 消息滚动区 */
+.cat-bubble-scroll {
+  max-height: 180px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+  padding-right: 4px;
+}
+
+.cat-bubble-scroll::-webkit-scrollbar { width: 3px; }
+.cat-bubble-scroll::-webkit-scrollbar-thumb {
+  background: var(--green-soft);
+  border-radius: 3px;
+}
+
+/* 消息气泡 */
+.cat-msg {
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin-bottom: 6px;
+  word-break: break-word;
+  animation: catMsgIn 0.3s ease;
+}
+
+.cat-msg-halo {
+  background: var(--green-soft);
+  color: var(--green-deep);
+  border-radius: 12px 12px 4px 12px;
+  margin-right: 8px;
+  margin-left: 0;
+}
+
+.cat-msg-user {
+  background: #e8e0d8;
+  color: #3a2e22;
+  border-radius: 12px 12px 12px 4px;
+  margin-left: 8px;
+  margin-right: 0;
+  text-align: right;
+}
+
+@keyframes catMsgIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 输入区 */
+.cat-bubble-input {
+  display: flex;
+  gap: 6px;
+}
+
+.cat-bubble-input input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--green-soft);
+  border-radius: 10px;
+  font-size: 0.8rem;
+  background: var(--paper-warm);
+  color: var(--green-deep);
+  outline: none;
+  font-family: inherit;
+}
+
+.cat-bubble-input input:focus {
+  border-color: var(--green-deep);
+  box-shadow: 0 0 0 2px rgba(45, 90, 63, 0.08);
+}
+
+.cat-bubble-input input::placeholder {
+  color: var(--green-light);
+  opacity: 0.7;
+}
+
+.cat-bubble-input button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--green-deep);
+  color: var(--paper-warm);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.cat-bubble-input button:hover {
+  background: var(--green-dark);
+}
+
+/* 移动端：小猫缩小 */
+@media (max-width: 768px) {
+  .cat-halo {
+    right: 10px;
+    bottom: 10px;
+  }
+  .cat-img-wrap {
+    width: 64px;
+    height: 64px;
+  }
+  .cat-bubble {
+    width: 220px;
+    padding: 10px 12px;
+  }
+  .cat-bubble-scroll {
+    max-height: 140px;
+  }
+}
+
 /* 移动端隐藏（避免遮挡导航） */
 @media (max-width: 768px) {
   .animal-peekers { display: none; }

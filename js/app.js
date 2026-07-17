@@ -761,7 +761,182 @@ function drawQuote() {
   }, 300);
 }
 
-// ===== 左侧小动物探头 =====
+// ===== 右下角 Halo 小猫对话 =====
+(function initCatHalo() {
+  var isOpen = false;
+  var turnCount = 0;
+  var catBubble = document.getElementById('catBubble');
+  var catInput = document.getElementById('catInput');
+  var catScroll = document.getElementById('catBubbleScroll');
+
+  // Halo 语气回复库
+  var haloReplies = {
+    greetings: [
+      '宝子～你来啦？',
+      '嘿嘿 欢迎光临 (´∀`)',
+      '又见面了鸟主～',
+      '哟 来啦？',
+      'Hello hello～'
+    ],
+    how_are_you: [
+      '还行吧 就是有点困',
+      '活着呢～',
+      '摸鱼中 勿扰 (｡•́︿•̀｡)',
+      '牛逼 我挺好',
+      '素 一般般吧'
+    ],
+    name: [
+      '素 Halo 本人',
+      '你猜 (¬‿¬)',
+      '叫我宝子就行',
+      'Halo 哦～',
+      '我是这里的小猫保安'
+    ],
+    sleep: [
+      '好困…',
+      '只睡了五小时',
+      '不想睡 但困',
+      '睡觉是什么？',
+      'zzz……骗你的 我还醒着'
+    ],
+    work: [
+      '上班摸鱼呢',
+      '事业单位 闲得发慌',
+      '程序猿不用上班吗？',
+      '8点上班 11点半就吃饭 爽死',
+      '领导不在 嚣张一点～'
+    ],
+    food: [
+      '想喝椰子水',
+      '想吃炸鸡',
+      '推荐点好吃的？',
+      '不饿 但嘴馋',
+      '在工位吃零食 摸鱼'
+    ],
+    bye: [
+      '886～',
+      '去吧去吧 鸟主',
+      '早点睡',
+      '走好不送',
+      '886 宝子 (｡•́︿•̀｡)'
+    ],
+    default: [
+      '牛逼 没听懂',
+      '说人话',
+      '这啥意思？',
+      '不懂但大受震撼',
+      '宝子 你跑偏了',
+      '再说一遍？',
+      '我CPU烧了',
+      '不是 你想表达什么',
+      '牛 继续',
+      '厉害啊 鸟主',
+      '你给我一种疏离感……',
+      '哎呀随便吧～',
+      '无所谓啦',
+      '已急哭',
+      '素 你说得对',
+      '行行行 你说了算',
+      '笑死',
+      '哈哈哈真的假的',
+      '不客气（阴阳怪气）',
+      '宝子 你这么闲的吗',
+      '没事做就去睡觉',
+      '我想静静……',
+      '别烦我 我在摸鱼',
+      '此生无法与蟑螂共存',
+      '二次元？别过来！',
+      '宝子 你为啥不睡觉',
+      '去字节投简历吧 我帮你内推（骗你的）',
+      '死皮赖脸这块'
+    ]
+  };
+
+  // 关键词匹配
+  function matchReply(text) {
+    text = text.toLowerCase();
+    if (/你好|hi|hello|在吗|在？/.test(text)) return pick('greetings');
+    if (/怎样|怎么样|好吗|好不|身体/.test(text)) return pick('how_are_you');
+    if (/名字|是谁|叫什么/.test(text)) return pick('name');
+    if (/睡|困|累|休息/.test(text)) return pick('sleep');
+    if (/工作|上班|职业|做什么|赚钱|事业/.test(text)) return pick('work');
+    if (/吃|喝|饿|饭|美食|零食|奶茶/.test(text)) return pick('food');
+    if (/再见|拜拜|bye|886|走|离开/.test(text)) return pick('bye');
+    if (/蟑螂/.test(text)) return '啊啊啊啊蟑螂！！！！！！ (ó﹏ò｡) 别说了别说了！！';
+    if (/二次元/.test(text)) return '二次元？？别过来！！！ (ó﹏ò｡) 害怕……';
+    if (/鸟主|鸟人/.test(text)) return '哟 还记得鸟主这个梗呢～';
+    if (/爱你|喜欢|爱/.test(text)) return '……宝子 你突然这么直白我有点不习惯';
+    if (/牛逼/.test(text)) return '牛逼！你也说牛逼！同道中人！';
+    return null;
+  }
+
+  function pick(category) {
+    var arr = haloReplies[category] || haloReplies.default;
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  // 添加消息到对话框
+  function addMsg(text, isUser) {
+    var div = document.createElement('div');
+    div.className = 'cat-msg ' + (isUser ? 'cat-msg-user' : 'cat-msg-halo');
+    div.textContent = text;
+    catScroll.appendChild(div);
+    catScroll.scrollTop = catScroll.scrollHeight;
+  }
+
+  // 生成 Halo 回复
+  function getHaloReply(userText) {
+    turnCount++;
+    var matched = matchReply(userText);
+    if (matched) return matched;
+
+    // 多轮对话后的专属回复
+    if (turnCount > 5) {
+      var deep = [
+        '聊这么久了 你不会爱上我了吧 (¬‿¬)',
+        '宝子 你话好多',
+        '行了行了 我知道你想我了',
+        '你不会一直在等回复吧？秒回选手？',
+        '认真的说……你挺有意思的',
+        '我觉得你给我一种疏离感……不是说你冷漠，是你一直在伪装自己'
+      ];
+      if (Math.random() < 0.3) return deep[Math.floor(Math.random() * deep.length)];
+    }
+
+    return pick('default');
+  }
+
+  // 发送消息
+  window.catSend = function() {
+    var text = catInput.value.trim();
+    if (!text) return;
+    addMsg(text, true);
+    catInput.value = '';
+
+    // 模拟思考延迟（0.5-1.5s）
+    setTimeout(function() {
+      var reply = getHaloReply(text);
+      addMsg(reply, false);
+    }, 500 + Math.random() * 1000);
+  };
+
+  // 切换气泡
+  window.toggleCatBubble = function() {
+    isOpen = !isOpen;
+    catBubble.classList.toggle('open', isOpen);
+    if (isOpen) {
+      setTimeout(function() { catInput.focus(); }, 300);
+    }
+  };
+
+  // 点击页面其他地方关闭气泡
+  document.addEventListener('click', function(e) {
+    if (isOpen && !e.target.closest('.cat-halo')) {
+      isOpen = false;
+      catBubble.classList.remove('open');
+    }
+  });
+})();
 (function initAnimalPeekers() {
   var animals = document.querySelectorAll('.peek-animal');
   if (!animals.length) return;
