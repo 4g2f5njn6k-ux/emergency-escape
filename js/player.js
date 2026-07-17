@@ -1,6 +1,12 @@
 /**
- * Emergency Escape — 音乐播放器
- * 网易云歌单 | 随机播放 | 浮动面板
+ * Emergency Escape — 音乐播放器 v2
+ * 网易云歌单 | 随机播放 | 浮动面板 | 自动播放
+ *
+ * 修复:
+ * - 使用 /api/audio/ 代理解决 HTTP→HTTPS 混合内容拦截
+ * - 简化 togglePlay 去掉有 bug 的 readyState 检查
+ * - 置顶歌曲从 deployed 文件 (EE_PINNED_SONG) 读取，不再是 localStorage
+ * - 打开页面自动尝试播放（符合现代浏览器交互策略）
  */
 (function () {
   'use strict';
@@ -13,23 +19,31 @@
   var playerBtn = null;
   var playerPanel = null;
   var panelVisible = false;
-  var wantToPlay = false; // 用户是否期望播放（用于处理切歌后续播）
-  var pinnedSong = null;   // { id, until } — 置顶歌曲
+  var wantToPlay = false;
+  var pinnedSong = null;   // 从 EE_PINNED_SONG 全局变量读取
+  var interactionRetryInstalled = false;
 
-  // ========== 置顶歌曲检查 ==========
+  // ========== 置顶歌曲 ==========
 
   function loadPinnedSong() {
+    // 优先从部署文件读取（所有访客都能拿到）
+    if (typeof EE_PINNED_SONG !== 'undefined' && EE_PINNED_SONG && EE_PINNED_SONG.id) {
+      var p = EE_PINNED_SONG;
+      if (!p.until) return p;
+      if (Date.now() > new Date(p.until).getTime()) return null; // 过期
+      return p;
+    }
+    // 回退：管理员自己的 localStorage（兼容旧逻辑）
     try {
       var raw = localStorage.getItem('ee_pinned_song');
       if (!raw) return null;
-      var p = JSON.parse(raw);
-      if (!p.id || !p.until) return null;
-      if (Date.now() > new Date(p.until).getTime()) {
-        // 过期
+      var lp = JSON.parse(raw);
+      if (!lp.id || !lp.until) return null;
+      if (Date.now() > new Date(lp.until).getTime()) {
         localStorage.removeItem('ee_pinned_song');
         return null;
       }
-      return p;
+      return lp;
     } catch (e) {
       return null;
     }
@@ -38,15 +52,16 @@
   // ========== DOM 构建 ==========
 
   function buildPlayer() {
-    // 浮动按钮
     playerBtn = document.createElement('button');
     playerBtn.className = 'music-btn';
     playerBtn.innerHTML = '<span class="music-btn-icon">&#9835;</span>';
     playerBtn.title = '播放音乐';
-    playerBtn.addEventListener('click', togglePanel);
+    playerBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      togglePanel();
+    });
     document.body.appendChild(playerBtn);
 
-    // 播放面板
     playerPanel = document.createElement('div');
     playerPanel.className = 'music-panel';
     playerPanel.innerHTML =
@@ -78,7 +93,6 @@
     playerPanel.querySelector('.music-prev').addEventListener('click', function () { wantToPlay = isPlaying; skipSong(-1); });
 
     bindProgressEvents();
-
     setInterval(updateProgress, 500);
   }
 
@@ -102,8 +116,8 @@
     if (audio) return;
     audio = new Audio();
     audio.volume = 0.8;
+    audio.preload = 'auto';
 
-    // 加载好就能播
     audio.addEventListener('canplay', function () {
       if (wantToPlay) {
         var p = audio.play();
@@ -111,13 +125,11 @@
       }
     });
 
-    // 播完：如果置顶歌曲有效则单曲循环，否则随机切歌
     audio.addEventListener('ended', function () {
+      // 置顶有效 → 单曲循环
       if (pinnedSong && pinnedSong.id) {
-        // 再次确认置顶未过期
         pinnedSong = loadPinnedSong();
         if (pinnedSong && pinnedSong.id === shuffled[currentIndex].id) {
-          // 单曲循环
           wantToPlay = true;
           audio.currentTime = 0;
           var p = audio.play();
@@ -129,9 +141,7 @@
       skipSong(1);
     });
 
-    // 播放出错，标记并跳过
     audio.addEventListener('error', function () {
-      // 标记无法播放的歌曲，不再反复重试
       if (shuffled.length && shuffled[currentIndex]) {
         deadSongs[shuffled[currentIndex].id] = true;
       }
@@ -144,24 +154,27 @@
       isPlaying = true;
       refreshPlayBtn();
       refreshCoverAnim();
+      // 正在播放时，让浮动按钮也亮起来
+      if (playerBtn) playerBtn.classList.add('playing');
     });
 
     audio.addEventListener('pause', function () {
       isPlaying = false;
       refreshPlayBtn();
       refreshCoverAnim();
+      if (playerBtn) playerBtn.classList.remove('playing');
     });
   }
 
   // ========== 缓存 ==========
 
   var audioUrlCache = {};
-  var deadSongs = {}; // 记录无法播放的歌曲 ID，避免反复重试
+  var deadSongs = {};
 
   function getAudioUrl(songId) {
     if (audioUrlCache[songId]) return audioUrlCache[songId];
-    // 网易云官方外链播放地址，比第三方代理稳定得多
-    var url = 'https://music.163.com/song/media/outer/url?id=' + songId + '.mp3';
+    // 使用 Cloudflare Pages Function 代理，自动升级 HTTP→HTTPS
+    var url = '/api/audio/' + songId;
     audioUrlCache[songId] = url;
     return url;
   }
@@ -172,24 +185,23 @@
     if (!shuffled.length) return;
     var song = shuffled[index];
 
-    // 这首歌之前就没放出来，直接跳过
     if (deadSongs[song.id]) {
       skipSong(1);
       return;
     }
 
-    var audioUrl = getAudioUrl(song.id);
-
     ensureAudio();
-    audio.src = audioUrl;
+    audio.src = getAudioUrl(song.id);
     audio.load();
 
     // 更新 UI
     var cover = playerPanel.querySelector('.music-cover');
-    cover.src = song.pic || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%232D5A3F" width="100" height="100"/><text x="50" y="58" text-anchor="middle" fill="%23F0E4C8" font-size="40">&#9835;</text></svg>';
+    cover.src = song.pic || 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="#2D5A3F" width="100" height="100"/><text x="50" y="58" text-anchor="middle" fill="#F0E4C8" font-size="40">&#9835;</text></svg>');
     playerPanel.querySelector('.music-name').textContent = song.name;
     playerPanel.querySelector('.music-artist').textContent = song.artist;
     playerPanel.querySelector('.music-progress-bar').style.width = '0%';
+    playerPanel.querySelector('.music-time-current').textContent = '00:00';
+    playerPanel.querySelector('.music-time-duration').textContent = '00:00';
   }
 
   // ========== 控制 ==========
@@ -209,11 +221,16 @@
       audio.pause();
     } else {
       wantToPlay = true;
-      if (!audio.src || audio.src === window.location.href || audio.readyState === 0) {
+      // 如果还没加载过任何歌曲，先加载
+      if (!audio.src || audio.currentSrc === window.location.href) {
         loadSong(currentIndex);
+        // canplay 事件会自动播放
       } else {
         var p = audio.play();
-        if (p) p.catch(function () {});
+        if (p) p.catch(function () {
+          // 播放被浏览器拦截，等交互后重试
+          installInteractionRetry();
+        });
       }
     }
   }
@@ -234,6 +251,8 @@
     }
   }
 
+  // ========== 进度条 ==========
+
   var seeking = false;
 
   function formatTime(sec) {
@@ -245,7 +264,7 @@
 
   function updateProgress() {
     if (!audio || !audio.duration || isNaN(audio.duration)) return;
-    if (seeking) return; // 拖动中不更新，让用户控制
+    if (seeking) return;
     var pct = Math.min((audio.currentTime / audio.duration) * 100, 100);
     var bar = playerPanel.querySelector('.music-progress-bar');
     if (bar) bar.style.width = pct + '%';
@@ -258,8 +277,7 @@
   function getProgressFromEvent(e) {
     var rect = playerPanel.querySelector('.music-progress').getBoundingClientRect();
     var clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    var pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    return pct;
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
   }
 
   function seekStart(e) {
@@ -303,7 +321,6 @@
     var prog = playerPanel.querySelector('.music-progress');
     if (!prog) return;
 
-    // click 直接跳转
     prog.addEventListener('click', function (e) {
       if (!audio || !audio.duration || isNaN(audio.duration)) return;
       var pct = getProgressFromEvent(e);
@@ -316,15 +333,54 @@
       }
     });
 
-    // 拖动
     prog.addEventListener('mousedown', seekStart);
     prog.addEventListener('touchstart', seekStart, { passive: false });
 
     document.addEventListener('mousemove', function (e) { if (seeking) { e.preventDefault(); seekMove(e); } });
     document.addEventListener('touchmove', function (e) { if (seeking) { e.preventDefault(); seekMove(e); } }, { passive: false });
-
     document.addEventListener('mouseup', function (e) { if (seeking) seekEnd(e); });
     document.addEventListener('touchend', function (e) { if (seeking) seekEnd(e); });
+  }
+
+  // ========== 自动播放 + 浏览器交互策略 ==========
+
+  function installInteractionRetry() {
+    if (interactionRetryInstalled) return;
+    interactionRetryInstalled = true;
+
+    function retryPlay(e) {
+      if (!wantToPlay || isPlaying) return;
+      if (!audio || !audio.src) return;
+      var p = audio.play();
+      if (p) p.catch(function () {}); // 静默失败
+      if (isPlaying) {
+        document.removeEventListener('click', retryPlay);
+        document.removeEventListener('touchstart', retryPlay);
+        document.removeEventListener('keydown', retryPlay);
+      }
+    }
+
+    document.addEventListener('click', retryPlay);
+    document.addEventListener('touchstart', retryPlay);
+    document.addEventListener('keydown', retryPlay);
+  }
+
+  function tryAutoPlay() {
+    wantToPlay = true;
+    ensureAudio();
+
+    // 如果没有 src，等 canplay
+    if (!audio.src || audio.currentSrc === window.location.href) {
+      return; // canplay 事件会自动播放
+    }
+
+    var p = audio.play();
+    if (p) {
+      p.catch(function () {
+        // 浏览器拦截了自动播放，等用户第一次交互后重试
+        installInteractionRetry();
+      });
+    }
   }
 
   // ========== 初始化 ==========
@@ -345,61 +401,30 @@
         playlist = MUSIC_PLAYLIST;
         shuffled = shuffle(playlist);
 
-        // 检查置顶歌曲
+        // 检查置顶歌曲（从部署文件读取）
         pinnedSong = loadPinnedSong();
         if (pinnedSong && pinnedSong.id) {
-          // 找到置顶歌曲在歌单中的索引
           var found = -1;
           for (var i = 0; i < shuffled.length; i++) {
             if (shuffled[i].id === pinnedSong.id) { found = i; break; }
           }
           if (found >= 0) {
             currentIndex = found;
-            // 把置顶歌曲放到队列最前面，方便单曲循环
             var pinned = shuffled.splice(found, 1)[0];
             shuffled.unshift(pinned);
             currentIndex = 0;
           }
         }
 
+        // 先加载歌曲
         loadSong(currentIndex);
 
-        // 有置顶歌曲时自动播放
-        if (pinnedSong && pinnedSong.id) {
-          wantToPlay = true;
-          // 面板自动展开，让访客看到当前在放什么
-          setTimeout(function () {
-            if (!panelVisible) {
-              panelVisible = true;
-              playerPanel.classList.add('visible');
-              playerBtn.classList.add('active');
-              refreshCoverAnim();
-            }
-          }, 300);
+        // 自动播放（不管是置顶还是随机）
+        // 延迟一下让 loader 动画先展示完
+        setTimeout(function () {
+          tryAutoPlay();
+        }, 1200);
 
-          // 尝试立即播放（可能被浏览器拦截）
-          setTimeout(function () {
-            if (!isPlaying && wantToPlay) {
-              ensureAudio();
-              var p = audio.play();
-              if (p) {
-                p.catch(function () {
-                  // 浏览器拦截了自动播放，等用户第一次交互后重试
-                  var onInteraction = function () {
-                    if (wantToPlay && !isPlaying && audio.src) {
-                      var p2 = audio.play();
-                      if (p2) p2.catch(function () {});
-                    }
-                    document.removeEventListener('click', onInteraction);
-                    document.removeEventListener('touchstart', onInteraction);
-                  };
-                  document.addEventListener('click', onInteraction, { once: true });
-                  document.addEventListener('touchstart', onInteraction, { once: true });
-                });
-              }
-            }
-          }, 600);
-        }
       } else {
         throw new Error('Empty playlist');
       }
