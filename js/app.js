@@ -761,10 +761,11 @@ function drawQuote() {
   }, 300);
 }
 
-// ===== 右下角 Halo 小猫对话 =====
+// ===== 右下角 Halo 小猫 — 移动 + 对话系统 =====
 (function initCatHalo() {
   var isOpen = false;
   var turnCount = 0;
+  var catHalo = document.getElementById('catHalo');
   var catBubble = document.getElementById('catBubble');
   var catInput = document.getElementById('catInput');
   var catScroll = document.getElementById('catBubbleScroll');
@@ -772,31 +773,273 @@ function drawQuote() {
   var catImg = document.getElementById('catImg');
   var catVideo1 = document.getElementById('catVideo1');
   var catVideo2 = document.getElementById('catVideo2');
+  var catVideoWalk = document.getElementById('catVideoWalk');
   var activeVideo = null;
 
-  // 鼠标悬停 → 随机播放视频动画
-  if (catImgWrap) {
-    catImgWrap.addEventListener('mouseenter', function() {
-      // 随机选一个视频
-      activeVideo = Math.random() < 0.5 ? catVideo1 : catVideo2;
-      if (!activeVideo) return;
-      catImgWrap.classList.add('video-active');
-      activeVideo.currentTime = 0;
-      var p = activeVideo.play();
-      if (p && p.catch) p.catch(function(){}); // 忽略 autoplay 限制
-    });
+  if (!catHalo || !catImgWrap) return;
 
-    catImgWrap.addEventListener('mouseleave', function() {
-      catImgWrap.classList.remove('video-active');
-      if (activeVideo) {
-        activeVideo.pause();
-        activeVideo.currentTime = 0;
-        activeVideo = null;
-      }
-    });
+  // ===== 位置系统 =====
+  var MARGIN = 20;
+  var catX = 0, catY = 0;
+  var catPctX = 1, catPctY = 1;
+  var isDragging = false;
+  var isWalking = false;
+  var walkTimer = null;
+  var mouseIdleTimer = null;
+  var wanderTimer = null;
+  var lastMouseX = 0, lastMouseY = 0;
+
+  function getCatSize() {
+    var r = catImgWrap.getBoundingClientRect();
+    return { w: r.width || 90, h: r.height || 90 };
   }
 
-  // Halo 语气回复库
+  function getHome() {
+    var s = getCatSize();
+    return {
+      x: window.innerWidth - MARGIN - s.w,
+      y: window.innerHeight - MARGIN - s.h
+    };
+  }
+
+  function applyPos(animate) {
+    var home = getHome();
+    var dx = catX - home.x;
+    var dy = catY - home.y;
+    if (!animate) {
+      catHalo.style.transition = 'none';
+      catHalo.offsetHeight;
+    }
+    catHalo.style.transform = 'translate3d(' + dx + 'px,' + dy + 'px,0)';
+    if (!animate) {
+      requestAnimationFrame(function() { catHalo.style.transition = ''; });
+    }
+  }
+
+  function initPos() {
+    var home = getHome();
+    catX = home.x;
+    catY = home.y;
+    catPctX = catX / window.innerWidth;
+    catPctY = catY / window.innerHeight;
+    applyPos(false);
+  }
+
+  function clampPos(x, y) {
+    var s = getCatSize();
+    return {
+      x: Math.max(0, Math.min(window.innerWidth - s.w, x)),
+      y: Math.max(0, Math.min(window.innerHeight - s.h, y))
+    };
+  }
+
+  // ===== 走到目标位置 =====
+  function walkTo(tx, ty, cb) {
+    if (isDragging) { if (cb) cb(); return; }
+    var s = getCatSize();
+    tx = Math.max(MARGIN, Math.min(window.innerWidth - MARGIN - s.w, tx));
+    ty = Math.max(MARGIN, Math.min(window.innerHeight - MARGIN - s.h, ty));
+
+    var oldX = catX;
+    catX = tx;
+    catY = ty;
+    catPctX = catX / window.innerWidth;
+    catPctY = catY / window.innerHeight;
+
+    var goingLeft = tx < oldX - 5;
+    var goingRight = tx > oldX + 5;
+    isWalking = true;
+    catHalo.classList.add('walking');
+    if (goingLeft) catImgWrap.classList.add('flip-x');
+    else catImgWrap.classList.remove('flip-x');
+
+    if (catVideoWalk) {
+      catVideoWalk.currentTime = 0;
+      var p = catVideoWalk.play();
+      if (p && p.catch) p.catch(function(){});
+    }
+
+    var dist = Math.sqrt((tx - oldX) * (tx - oldX) + (ty - oldY) * (ty - oldY));
+    var dur = Math.max(800, Math.min(4000, dist * 4));
+    catHalo.style.transition = 'transform ' + dur + 'ms ease-in-out';
+    applyPos(true);
+
+    clearTimeout(walkTimer);
+    walkTimer = setTimeout(function() {
+      stopWalking();
+      if (cb) cb();
+    }, dur + 80);
+  }
+
+  function stopWalking() {
+    isWalking = false;
+    catHalo.classList.remove('walking');
+    catImgWrap.classList.remove('flip-x');
+    if (catVideoWalk) { catVideoWalk.pause(); catVideoWalk.currentTime = 0; }
+  }
+
+  // ===== 随机漫步 =====
+  function scheduleWander() {
+    clearTimeout(wanderTimer);
+    var delay = 6000 + Math.random() * 12000;
+    wanderTimer = setTimeout(function() {
+      if (!isDragging && !isOpen && !isWalking) {
+        var s = getCatSize();
+        var m = 50;
+        var tx = m + Math.random() * (window.innerWidth - 2 * m - s.w);
+        var ty = m + Math.random() * (window.innerHeight - 2 * m - s.h);
+        walkTo(tx, ty, function() { scheduleWander(); });
+      } else {
+        scheduleWander();
+      }
+    }, delay);
+  }
+
+  // ===== 30秒鼠标不动 → 走到鼠标处 =====
+  function resetMouseIdle() {
+    clearTimeout(mouseIdleTimer);
+    mouseIdleTimer = setTimeout(function() {
+      if (!isDragging && !isOpen && !isWalking) {
+        var s = getCatSize();
+        walkTo(lastMouseX - s.w / 2, lastMouseY - s.h / 2, function() {
+          scheduleWander();
+        });
+      } else {
+        resetMouseIdle();
+      }
+    }, 30000);
+  }
+
+  document.addEventListener('mousemove', function(e) {
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+    resetMouseIdle();
+  });
+
+  // ===== 拖动（鼠标） =====
+  var dragOX = 0, dragOY = 0, downX = 0, downY = 0, moved = false;
+
+  catImgWrap.addEventListener('mousedown', function(e) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    isDragging = true;
+    moved = false;
+    downX = e.clientX;
+    downY = e.clientY;
+    stopWalking();
+    clearTimeout(wanderTimer);
+    clearTimeout(mouseIdleTimer);
+    catHalo.classList.add('dragging');
+    var r = catImgWrap.getBoundingClientRect();
+    dragOX = e.clientX - r.left;
+    dragOY = e.clientY - r.top;
+    catImgWrap.style.animation = 'none';
+  });
+
+  document.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+    var dx = e.clientX - downX, dy = e.clientY - downY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+    var p = clampPos(e.clientX - dragOX, e.clientY - dragOY);
+    catX = p.x; catY = p.y;
+    catPctX = catX / window.innerWidth;
+    catPctY = catY / window.innerHeight;
+    applyPos(false);
+  });
+
+  document.addEventListener('mouseup', function(e) {
+    if (!isDragging) return;
+    isDragging = false;
+    catHalo.classList.remove('dragging');
+    catImgWrap.style.animation = '';
+    if (!moved) {
+      toggleCatBubble();
+    }
+    resetMouseIdle();
+    scheduleWander();
+  });
+
+  // ===== 拖动（触摸） =====
+  catImgWrap.addEventListener('touchstart', function(e) {
+    if (e.touches.length !== 1) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var t = e.touches[0];
+    isDragging = true;
+    moved = false;
+    downX = t.clientX; downY = t.clientY;
+    stopWalking();
+    clearTimeout(wanderTimer);
+    clearTimeout(mouseIdleTimer);
+    catHalo.classList.add('dragging');
+    var r = catImgWrap.getBoundingClientRect();
+    dragOX = t.clientX - r.left;
+    dragOY = t.clientY - r.top;
+    catImgWrap.style.animation = 'none';
+  }, { passive: false });
+
+  document.addEventListener('touchmove', function(e) {
+    if (!isDragging || e.touches.length !== 1) return;
+    e.preventDefault();
+    var t = e.touches[0];
+    var dx = t.clientX - downX, dy = t.clientY - downY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+    var p = clampPos(t.clientX - dragOX, t.clientY - dragOY);
+    catX = p.x; catY = p.y;
+    catPctX = catX / window.innerWidth;
+    catPctY = catY / window.innerHeight;
+    applyPos(false);
+  }, { passive: false });
+
+  document.addEventListener('touchend', function(e) {
+    if (!isDragging) return;
+    isDragging = false;
+    catHalo.classList.remove('dragging');
+    catImgWrap.style.animation = '';
+    if (!moved) toggleCatBubble();
+    resetMouseIdle();
+    scheduleWander();
+  });
+
+  // 窗口缩放
+  window.addEventListener('resize', function() {
+    var s = getCatSize();
+    catX = catPctX * window.innerWidth;
+    catY = catPctY * window.innerHeight;
+    var p = clampPos(catX, catY);
+    catX = p.x; catY = p.y;
+    catPctX = catX / window.innerWidth;
+    catPctY = catY / window.innerHeight;
+    applyPos(false);
+  });
+
+  // 初始化
+  initPos();
+  resetMouseIdle();
+  scheduleWander();
+
+  // ===== 悬停 → 动作视频（仅 idle 时） =====
+  catImgWrap.addEventListener('mouseenter', function() {
+    if (isWalking || isDragging) return;
+    activeVideo = Math.random() < 0.5 ? catVideo1 : catVideo2;
+    if (!activeVideo) return;
+    catImgWrap.classList.add('video-active');
+    activeVideo.currentTime = 0;
+    var p = activeVideo.play();
+    if (p && p.catch) p.catch(function(){});
+  });
+
+  catImgWrap.addEventListener('mouseleave', function() {
+    catImgWrap.classList.remove('video-active');
+    if (activeVideo) {
+      activeVideo.pause();
+      activeVideo.currentTime = 0;
+      activeVideo = null;
+    }
+  });
+
+  // ===== Halo 语气回复库 =====
   var haloReplies = {
     greetings: [
       '宝子～你来啦？',
@@ -813,11 +1056,27 @@ function drawQuote() {
       '素 一般般吧'
     ],
     name: [
-      '素 Halo 本人',
-      '你猜 (¬‿¬)',
-      '叫我宝子就行',
-      'Halo 哦～',
-      '我是这里的小猫保安'
+      '我是小南瓜呀～这是妈妈给我起的名字',
+      '叫我小南瓜就行 (´∀`)',
+      '素小南瓜呀 你忘记了吗',
+      '我是小南瓜！妈妈的第二只小猫咪～'
+    ],
+    intro: [
+      '我是小南瓜呀～我的妈妈是Halo，我的姐姐叫二丫，我是妈妈的第二只小猫咪 (´∀`)',
+      '我叫小南瓜～妈妈有一天晚上做梦梦到了这个名字，就给我用啦',
+      '我会模仿妈妈说话 但是有时候乱模仿 有时候模仿得不像 那也没办法啦 毕竟我只是一只小猫咪呀 (｡•́︿•̀｡)'
+    ],
+    mom: [
+      '我妈妈是Halo呀～我在模仿她说话呢',
+      '妈妈的小名叫丫丫～给姐姐起名字的时候希望姥姥姥爷爱屋及乌',
+      '妈妈超牛逼的！虽然她不让我说脏话',
+      '妈妈有时候说话很直接 但她其实很关心人～'
+    ],
+    sister: [
+      '我姐姐叫二丫呀～因为妈妈的小名叫丫丫',
+      '姐姐是妈妈的第一只小猫咪 我是第二只～',
+      '给姐姐起名字的时候 妈妈希望姥姥姥爷爱屋及乌 所以叫二丫',
+      '姐姐比我大 我要叫她姐姐 (｡•́︿•̀｡)'
     ],
     sleep: [
       '好困…',
@@ -875,16 +1134,23 @@ function drawQuote() {
       '二次元？别过来！',
       '宝子 你为啥不睡觉',
       '去字节投简历吧 我帮你内推（骗你的）',
-      '死皮赖脸这块'
+      '死皮赖脸这块',
+      '毕竟我只是一只小猫咪呀 (｡•́︿•̀｡)',
+      '我乱模仿的 别当真～'
     ]
   };
 
   // 关键词匹配
   function matchReply(text) {
     text = text.toLowerCase();
+    if (/介绍|自我介绍|你是谁|你是|你叫|名字|小南瓜|你是啥/.test(text)) {
+      if (/介绍|自我介绍|你是谁|你是啥/.test(text)) return pick('intro');
+      return pick('name');
+    }
+    if (/妈妈|老妈|mother|halo/.test(text)) return pick('mom');
+    if (/姐姐|二丫|sister/.test(text)) return pick('sister');
     if (/你好|hi|hello|在吗|在？/.test(text)) return pick('greetings');
     if (/怎样|怎么样|好吗|好不|身体/.test(text)) return pick('how_are_you');
-    if (/名字|是谁|叫什么/.test(text)) return pick('name');
     if (/睡|困|累|休息/.test(text)) return pick('sleep');
     if (/工作|上班|职业|做什么|赚钱|事业/.test(text)) return pick('work');
     if (/吃|喝|饿|饭|美食|零食|奶茶/.test(text)) return pick('food');
@@ -917,7 +1183,6 @@ function drawQuote() {
     var matched = matchReply(userText);
     if (matched) return matched;
 
-    // 多轮对话后的专属回复
     if (turnCount > 5) {
       var deep = [
         '聊这么久了 你不会爱上我了吧 (¬‿¬)',
@@ -939,8 +1204,6 @@ function drawQuote() {
     if (!text) return;
     addMsg(text, true);
     catInput.value = '';
-
-    // 模拟思考延迟（0.5-1.5s）
     setTimeout(function() {
       var reply = getHaloReply(text);
       addMsg(reply, false);
@@ -948,19 +1211,27 @@ function drawQuote() {
   };
 
   // 切换气泡
-  window.toggleCatBubble = function() {
+  function toggleCatBubble() {
     isOpen = !isOpen;
     catBubble.classList.toggle('open', isOpen);
     if (isOpen) {
+      clearTimeout(wanderTimer);
+      clearTimeout(mouseIdleTimer);
       setTimeout(function() { catInput.focus(); }, 300);
+    } else {
+      resetMouseIdle();
+      scheduleWander();
     }
-  };
+  }
+  window.toggleCatBubble = toggleCatBubble;
 
   // 点击页面其他地方关闭气泡
   document.addEventListener('click', function(e) {
     if (isOpen && !e.target.closest('.cat-halo')) {
       isOpen = false;
       catBubble.classList.remove('open');
+      resetMouseIdle();
+      scheduleWander();
     }
   });
 })();
