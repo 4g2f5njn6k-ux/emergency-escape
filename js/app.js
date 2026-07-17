@@ -768,6 +768,33 @@ function drawQuote() {
   var catBubble = document.getElementById('catBubble');
   var catInput = document.getElementById('catInput');
   var catScroll = document.getElementById('catBubbleScroll');
+  var catImgWrap = document.getElementById('catImgWrap');
+  var catImg = document.getElementById('catImg');
+  var catVideo1 = document.getElementById('catVideo1');
+  var catVideo2 = document.getElementById('catVideo2');
+  var activeVideo = null;
+
+  // 鼠标悬停 → 随机播放视频动画
+  if (catImgWrap) {
+    catImgWrap.addEventListener('mouseenter', function() {
+      // 随机选一个视频
+      activeVideo = Math.random() < 0.5 ? catVideo1 : catVideo2;
+      if (!activeVideo) return;
+      catImgWrap.classList.add('video-active');
+      activeVideo.currentTime = 0;
+      var p = activeVideo.play();
+      if (p && p.catch) p.catch(function(){}); // 忽略 autoplay 限制
+    });
+
+    catImgWrap.addEventListener('mouseleave', function() {
+      catImgWrap.classList.remove('video-active');
+      if (activeVideo) {
+        activeVideo.pause();
+        activeVideo.currentTime = 0;
+        activeVideo = null;
+      }
+    });
+  }
 
   // Halo 语气回复库
   var haloReplies = {
