@@ -838,7 +838,10 @@
       }).then(function(file) {
         if (!file || !file.content) return;
         try {
-          var decoded = new TextDecoder('utf-8').decode(Uint8Array.from(atob(file.content), function(c) { return c.charCodeAt(0); }));
+          var binary = atob(file.content);
+          var bytes = new Uint8Array(binary.length);
+          for (var b = 0; b < binary.length; b++) { bytes[b] = binary.charCodeAt(b); }
+          var decoded = new TextDecoder('utf-8').decode(bytes);
           var cfg = JSON.parse(decoded);
           if (cfg.pwdHash) {
             localStorage.setItem(PWD_KEY, cfg.pwdHash);
