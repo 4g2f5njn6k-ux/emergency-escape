@@ -1527,21 +1527,28 @@
   }
 
   // ===== 发布结果弹窗 =====
-  function showDeployResult(success, errors) {
+  function showDeployResult(changed, errors, skipped, newVersion) {
     var title = document.getElementById('deployResultTitle');
     var body = document.getElementById('deployResultBody');
     if (errors && errors.length > 0) {
-      title.textContent = '⚠️ ' + success + ' 个文件成功，' + errors.length + ' 个失败';
+      title.textContent = '⚠️ ' + changed + ' 个文件成功，' + errors.length + ' 个失败';
       title.style.color = '#f97316';
       var html = '<p style="margin-bottom:0.8rem;">以下文件推送失败：</p>';
       errors.forEach(function(e) {
         html += '<div class="err-item">' + escapeHtml(e) + '</div>';
       });
+      if (skipped > 0) html += '<p style="margin-top:0.8rem;color:var(--text-muted);font-size:0.8rem;">' + skipped + ' 个文件未变化已跳过</p>';
       body.innerHTML = html;
+    } else if (changed === 0) {
+      title.textContent = '✅ 所有文件均为最新';
+      title.style.color = 'var(--green-mid)';
+      body.innerHTML = '<p>没有需要更新的文件，所有 ' + skipped + ' 个文件均未变化。</p>';
     } else {
       title.textContent = '✅ 发布成功！';
       title.style.color = 'var(--green-mid)';
-      body.innerHTML = '<p>所有文件已推送到 GitHub。</p><p style="margin-top:0.5rem;color:var(--text-muted);">GitHub Actions 正在自动部署到 <strong>haloworld-me.netlify.app</strong>，约 1 分钟后生效。</p>';
+      body.innerHTML = '<p>' + changed + ' 个文件已更新' + (skipped > 0 ? '，' + skipped + ' 个文件未变化已跳过' : '') + '。</p>' +
+        '<p style="margin-top:0.5rem;color:var(--text-muted);">版本号 <code>v=' + newVersion + '</code>，浏览器将自动加载最新内容。</p>' +
+        '<p style="margin-top:0.5rem;color:var(--text-muted);">Cloudflare Pages 正在自动部署到 <strong>emergency-escape.pages.dev</strong>，约 1 分钟后生效。</p>';
     }
     document.getElementById('deployResultOverlay').classList.add('active');
   }
@@ -1604,78 +1611,171 @@
   }
 
   function publishSite() {
-    if (!confirm('将本地所有项目文件同步到 GitHub？\n发布后约 1 分钟在 haloworld-me.netlify.app 生效。')) return;
+    if (!confirm('将本地修改同步到线上？\n\n✅ 仅上传有变更的文件，速度更快\n✅ 自动更新版本号，浏览器强制刷新')) return;
 
     var btn = document.querySelector('.admin-tab-publish');
     var origText = btn.textContent;
-    btn.textContent = '⏳ 正在读取文件...';
+    btn.textContent = '🔍 正在分析变更...';
     btn.classList.add('publishing');
 
-    // 1. 先导出 content.json（因为可能管理面板有未保存的修改）
+    // ===== 生成新版本号（时间戳），破坏浏览器缓存 =====
+    var NEW_VERSION = String(Date.now());
+
+    // 导出 content.json
     var contentJson = exportContentJSON();
 
-    // 2. 逐个推送所有文件
     var total = DEPLOY_FILES.length;
-    var done = 0;
+    var changed = 0;
+    var skipped = 0;
     var errors = [];
 
-    function pushNext(index) {
-      if (index >= total) {
-        btn.textContent = origText;
-        btn.classList.remove('publishing');
-        showDeployResult(done, errors);
-        return;
-      }
+    // UTF-8 文本 → base64（与 GitHub API 编码一致，确保比对可靠）
+    function utf8ToB64(str) {
+      var bytes = new TextEncoder().encode(str);
+      var bin = '';
+      for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      return btoa(bin);
+    }
 
-      var path = DEPLOY_FILES[index];
-      btn.textContent = '⏳ 发布中... (' + (done + 1) + '/' + total + ') ' + path;
+    // 判断是否为文本文件（文本用 UTF-8 编码比对，二进制用 blob）
+    function isTextFile(path) {
+      return /\.(html|css|js|json|txt|md|svg|xml)$/i.test(path);
+    }
 
-      // 特殊处理 content.json（用管理面板导出数据，TextEncoder 做 UTF-8 base64）
-      var contentPromise;
+    // 读取本地文件 → base64
+    function readLocal(path) {
       if (path === 'data/content.json') {
-        var encoder = new TextEncoder();
-        var bytes = encoder.encode(contentJson);
-        var binary = '';
-        for (var bi = 0; bi < bytes.length; bi++) {
-          binary += String.fromCharCode(bytes[bi]);
-        }
-        contentPromise = Promise.resolve(btoa(binary));
-      } else {
-        contentPromise = readLocalFile(path);
+        return Promise.resolve(utf8ToB64(contentJson));
       }
 
-      contentPromise.then(function(b64Content) {
-        return getFileSha(path).then(function(sha) {
-          var body = {
-            message: '📦 部署: ' + path + ' @ ' + new Date().toLocaleString('zh-CN'),
-            content: b64Content,
-            branch: 'main'
-          };
-          if (sha) body.sha = sha;
-
-          return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + path, {
-            method: 'PUT',
-            headers: {
-              'Authorization': 'Bearer ' + GH_TOKEN,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body)
-          }).then(function(r) { return r.json(); });
+      if (isTextFile(path)) {
+        return fetch(path).then(function(r) {
+          if (!r.ok) throw new Error('读取失败 ' + r.status);
+          return r.text();
+        }).then(function(text) {
+          // index.html 自动更新版本号（替换所有 ?v=... 查询参数）
+          if (path === 'index.html') {
+            text = text.replace(/\?v=\d+/g, '?v=' + NEW_VERSION);
+          }
+          return utf8ToB64(text);
         });
-      }).then(function(result) {
-        if (result.content || result.commit) {
-          done++;
-        } else {
-          errors.push(path + ': ' + (result.message || JSON.stringify(result)));
-        }
-        setTimeout(function() { pushNext(index + 1); }, 300);
-      }).catch(function(err) {
-        errors.push(path + ': ' + err.message);
-        setTimeout(function() { pushNext(index + 1); }, 300);
+      }
+
+      // 二进制文件（图片等）
+      return fetch(path).then(function(r) {
+        if (!r.ok) throw new Error('读取失败 ' + r.status);
+        return r.blob();
+      }).then(function(blob) {
+        return new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function() { resolve(reader.result.split(',')[1]); };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
       });
     }
 
-    pushNext(0);
+    // 获取 GitHub 远程文件信息（SHA + base64 内容）
+    function fetchRemote(path) {
+      return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + path + '?ref=main', {
+        headers: { 'Authorization': 'Bearer ' + GH_TOKEN }
+      }).then(function(r) {
+        if (r.status === 404) return null; // 新文件
+        if (!r.ok) throw new Error('GitHub API: ' + r.status);
+        return r.json();
+      }).then(function(data) {
+        if (!data) return null;
+        // GitHub 返回的 base64 可能有换行，去掉空白再比对
+        return { sha: data.sha, b64: data.content.replace(/\s/g, '') };
+      });
+    }
+
+    // ===== 并行读取所有本地文件 + 获取所有远程信息 =====
+    var localPromises = DEPLOY_FILES.map(function(p) {
+      return readLocal(p).catch(function(e) { return { _error: e.message }; });
+    });
+    var remotePromises = DEPLOY_FILES.map(function(p) {
+      return fetchRemote(p).catch(function() { return null; });
+    });
+
+    Promise.all(localPromises).then(function(localArr) {
+      return Promise.all(remotePromises).then(function(remoteArr) {
+        return { local: localArr, remote: remoteArr };
+      });
+    }).then(function(result) {
+      // ===== 逐文件对比，找出变更的 =====
+      var toUpload = [];
+      for (var i = 0; i < DEPLOY_FILES.length; i++) {
+        var path = DEPLOY_FILES[i];
+        var loc = result.local[i];
+        var rem = result.remote[i];
+
+        if (loc._error) {
+          errors.push(path + ': ' + loc._error);
+          continue;
+        }
+
+        // 本地与远程 base64 完全一致 → 跳过
+        if (rem && loc === rem.b64) {
+          skipped++;
+          continue;
+        }
+
+        toUpload.push({ path: path, b64: loc, sha: rem ? rem.sha : null });
+      }
+
+      // 没有任何变更
+      if (toUpload.length === 0) {
+        btn.textContent = origText;
+        btn.classList.remove('publishing');
+        showDeployResult(0, errors, skipped, NEW_VERSION);
+        return;
+      }
+
+      // ===== 逐个上传变更文件 =====
+      function uploadNext(idx) {
+        if (idx >= toUpload.length) {
+          btn.textContent = origText;
+          btn.classList.remove('publishing');
+          showDeployResult(changed, errors, skipped, NEW_VERSION);
+          return;
+        }
+
+        var f = toUpload[idx];
+        btn.textContent = '⏳ ' + (idx + 1) + '/' + toUpload.length + ' ' + f.path;
+
+        var body = {
+          message: '📦 deploy: ' + f.path + ' [v=' + NEW_VERSION + ']',
+          content: f.b64,
+          branch: 'main'
+        };
+        if (f.sha) body.sha = f.sha;
+
+        fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + f.path, {
+          method: 'PUT',
+          headers: {
+            'Authorization': 'Bearer ' + GH_TOKEN,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        }).then(function(r) { return r.json(); })
+        .then(function(res) {
+          if (res.content || res.commit) changed++;
+          else errors.push(f.path + ': ' + (res.message || 'unknown'));
+          setTimeout(function() { uploadNext(idx + 1); }, 200);
+        }).catch(function(err) {
+          errors.push(f.path + ': ' + err.message);
+          setTimeout(function() { uploadNext(idx + 1); }, 200);
+        });
+      }
+
+      uploadNext(0);
+    }).catch(function(err) {
+      btn.textContent = origText;
+      btn.classList.remove('publishing');
+      errors.push('初始化失败: ' + err.message);
+      showDeployResult(0, errors, 0, NEW_VERSION);
+    });
   }
 
   // ========== 问卷管理 ==========
