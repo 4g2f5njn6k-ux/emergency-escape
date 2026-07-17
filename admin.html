@@ -786,6 +786,9 @@
   // ===== 密码管理 =====
   const PWD_KEY = 'ee_admin_pwd_hash';
   const SESSION_KEY = 'ee_admin_authed';
+  // 硬编码的默认密码哈希：防止新浏览器绕过鉴权直接"设置密码"
+  // 新设备首次打开时，若 localStorage 无记录，以此哈希作为验证标准
+  const DEFAULT_PWD_HASH = 'ee_29v9j1_10';
 
   function simpleHash(str) {
     let hash = 0;
@@ -797,8 +800,9 @@
     return 'ee_' + Math.abs(hash).toString(36) + '_' + str.length;
   }
 
-  function getStoredHash() { return localStorage.getItem(PWD_KEY); }
-  function isPasswordSet() { return !!getStoredHash(); }
+  // 优先级: localStorage 已存哈希 > 硬编码默认哈希（始终存在，确保新浏览器也必须验密）
+  function getStoredHash() { return localStorage.getItem(PWD_KEY) || DEFAULT_PWD_HASH; }
+  function isPasswordSet() { return true; } // 始终视为"已设置"——首次使用也必须输入正确密码
   function isAuthed() { return sessionStorage.getItem(SESSION_KEY) === '1'; }
 
   function initLogin() {
@@ -815,17 +819,33 @@
       return;
     }
 
-    if (!isPasswordSet()) {
-      sub.textContent = '首次使用，请设置管理密码';
-      btn.textContent = '设置密码';
-    } else {
-      sub.textContent = '请输入管理密码';
-      btn.textContent = '进入';
-    }
+    // 始终要求输入正确密码 - 不再提供"首次设置密码"入口
+    sub.textContent = '请输入管理密码';
+    btn.textContent = '进入';
 
     overlay.style.display = 'flex';
     main.style.display = 'none';
     pwdInput.focus();
+
+    // 如果 localStorage 中无历史哈希，尝试从 GitHub 获取最新远程哈希
+    // 这样改密码后新浏览器也能自动获取最新密码验证标准
+    if (!localStorage.getItem(PWD_KEY)) {
+      fetch('https://api.github.com/repos/' + GH_REPO + '/contents/data/admin-config.json', {
+        headers: { 'Authorization': 'Bearer ' + GH_TOKEN }
+      }).then(function(r) {
+        if (!r.ok) return;
+        return r.json();
+      }).then(function(file) {
+        if (!file || !file.content) return;
+        try {
+          var decoded = new TextDecoder('utf-8').decode(Uint8Array.from(atob(file.content), function(c) { return c.charCodeAt(0); }));
+          var cfg = JSON.parse(decoded);
+          if (cfg.pwdHash) {
+            localStorage.setItem(PWD_KEY, cfg.pwdHash);
+          }
+        } catch(e) { /* 解析失败则使用硬编码默认值 */ }
+      }).catch(function() { /* 网络错误则使用硬编码默认值 */ });
+    }
   }
 
   function tryLogin() {
@@ -833,24 +853,17 @@
     const err = document.getElementById('loginError');
     if (!pwd) { err.textContent = '请输入密码'; err.style.display = 'block'; return; }
 
-    if (!isPasswordSet()) {
-      if (pwd.length < 3) { err.textContent = '密码至少3位'; err.style.display = 'block'; return; }
+    if (simpleHash(pwd) === getStoredHash()) {
+      // 登录成功：将当前哈希写入 localStorage，后续优先使用（避免每次都走硬编码兜底）
       localStorage.setItem(PWD_KEY, simpleHash(pwd));
       sessionStorage.setItem(SESSION_KEY, '1');
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('adminMain').style.display = 'block';
       initAdmin();
     } else {
-      if (simpleHash(pwd) === getStoredHash()) {
-        sessionStorage.setItem(SESSION_KEY, '1');
-        document.getElementById('loginOverlay').style.display = 'none';
-        document.getElementById('adminMain').style.display = 'block';
-        initAdmin();
-      } else {
-        err.textContent = '密码不对，再试试';
-        err.style.display = 'block';
-        document.getElementById('loginPwd').value = '';
-      }
+      err.textContent = '密码不对，再试试';
+      err.style.display = 'block';
+      document.getElementById('loginPwd').value = '';
     }
   }
 
@@ -864,13 +877,40 @@
     const oldPwd = prompt('请输入当前密码：');
     if (!oldPwd) return;
     if (simpleHash(oldPwd) !== getStoredHash()) { alert('当前密码不对'); return; }
-    const newPwd = prompt('请输入新密码（至少3位）：');
-    if (!newPwd || newPwd.length < 3) { alert('密码至少3位'); return; }
+    const newPwd = prompt('请输入新密码（至少6位，字母+数字组合更安全）：');
+    if (!newPwd || newPwd.length < 6) { alert('密码至少6位，请重新操作'); return; }
     const repeat = prompt('请再次输入新密码：');
     if (newPwd !== repeat) { alert('两次密码不一致'); return; }
-    localStorage.setItem(PWD_KEY, simpleHash(newPwd));
+    const newHash = simpleHash(newPwd);
+    localStorage.setItem(PWD_KEY, newHash);
     sessionStorage.setItem(SESSION_KEY, '1');
-    alert('密码修改成功！');
+
+    // 尝试将新密码哈希同步到 GitHub 上的 admin-config.json
+    // 成功后新浏览器也能使用新密码；失败则本地生效，建议手动发布
+    fetch('https://api.github.com/repos/' + GH_REPO + '/contents/data/admin-config.json', {
+      headers: { 'Authorization': 'Bearer ' + GH_TOKEN }
+    }).then(function(r) {
+      if (!r.ok) throw new Error('读取配置失败');
+      return r.json();
+    }).then(function(file) {
+      var newCfg = JSON.stringify({ pwdHash: newHash }, null, 2);
+      var utf8 = new TextEncoder().encode(newCfg);
+      var b64 = '';
+      for (var bi = 0; bi < utf8.length; bi++) b64 += String.fromCharCode(utf8[bi]);
+      return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/data/admin-config.json', {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + GH_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'admin: 更新管理密码', content: btoa(b64), sha: file.sha })
+      });
+    }).then(function(r) {
+      if (r && r.ok) {
+        alert('密码修改成功！\n\n新密码已在本地生效。远程配置也已同步，新设备打开管理页面时将使用新密码验证。');
+      } else {
+        alert('密码修改成功（本地生效）！\n\n⚠️ 远程同步失败，建议点击「🚀 发布上线」按钮同步到线上，否则新浏览器仍需使用旧密码。');
+      }
+    }).catch(function() {
+      alert('密码修改成功（本地生效）！\n\n⚠️ 远程同步失败，建议点击「🚀 发布上线」按钮同步到线上，否则新浏览器仍需使用旧密码。');
+    });
   }
 
   // ===== 管理面板 =====
@@ -1524,6 +1564,7 @@
     'data/playlist.js',
     'data/questions.json',
     'data/weibo_import.js',
+    'data/admin-config.json',
     'images/leaf-blossom.jpg'
   ];
 
